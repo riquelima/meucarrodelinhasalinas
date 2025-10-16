@@ -1,0 +1,42 @@
+# ===============================
+# Arquivos temporários do sistema
+# ===============================
+.DS_Store
+Thumbs.db
+*.log
+
+# ===============================
+# Node.js - regras gerais
+# ===============================
+node_modules/
+dist/
+build/
+
+# ===============================
+# React (frontend)
+# ===============================
+/frontend/node_modules/
+/frontend/build/
+/frontend/.env
+/frontend/.parcel-cache
+/frontend/.cache
+/frontend/.next
+/frontend/out
+
+# ===============================
+# NestJS (backend)
+# ===============================
+/backend/node_modules/
+/backend/dist/
+/backend/.env
+/backend/.cache
+
+# ===============================
+# IDEs e editores
+# ===============================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
