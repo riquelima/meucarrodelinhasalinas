@@ -1,14 +1,27 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { User, UserSchema } from './schemas/user.schema';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { User, UserSchema } from './schemas/user.schema';
-
+import { Motorista, MotoristaSchema } from './schemas/motorista.schema';
+import { Anunciante, AnuncianteSchema } from './schemas/anunciante.schema';
 
 @Module({
-imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])],
-providers: [UsersService],
-controllers: [UsersController],
-exports: [UsersService],
+    imports: [
+        MongooseModule.forFeatureAsync([
+            {
+                name: User.name,
+                useFactory: () => {
+                    const schema = UserSchema;
+                    schema.discriminator('motorista', MotoristaSchema);
+                    schema.discriminator('anunciante', AnuncianteSchema);
+                    return schema;
+                },
+            },
+        ]),
+    ],
+    controllers: [UsersController],
+    providers: [UsersService],
+    exports: [UsersService],
 })
-export class UsersModule {}
+export class UsersModule { }
