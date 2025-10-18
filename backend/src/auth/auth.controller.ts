@@ -22,6 +22,13 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   async login(@Body() loginUserDto: LoginUserDto) {
-    return this.authService.login(await this.authService.validateUser(loginUserDto.email, loginUserDto.password));
+    const user = await this.authService.validateUser(
+      loginUserDto.email,
+      loginUserDto.password,
+    );
+    if (!user) {
+      throw new Error('Credenciais inválidas');
+    }
+    return this.authService.login(user);
   }
 }
