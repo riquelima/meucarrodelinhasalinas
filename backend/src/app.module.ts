@@ -18,7 +18,7 @@ import { BlogModule } from './blog/blog.module';
     MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost/meu_carro_db'),
     AuthModule,
     UsersModule,
-    RoutesModule,
+    //RoutesModule,
     ReviewsModule,
     MessageModule,
     AdsModule,

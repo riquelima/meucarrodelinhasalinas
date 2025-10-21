@@ -15,7 +15,7 @@ export enum UserRole {
   ANUNCIANTE = 'anunciante',
 }
 
-export class CreateUserDto {
+export class UpdateUserDto {
   @ApiProperty({ example: 'Gabriel Ramos', description: 'Nome completo do usuário' })
   @IsString({ message: 'O nome deve ser uma string válida' })
   @IsNotEmpty({ message: 'O nome é obrigatório' })
@@ -84,16 +84,16 @@ export class CreateUserDto {
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
   @IsNotEmpty({ message: 'Os horarios disponiveis são obrigatórios para motoristas' })
   @IsString({ message: 'Os horarios disponíveis devem ser uma string' })
-  availableDays?: string;
+  AvailableDays?: string;
 
   // ANUNCIANTE
-   @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
-  // @IsNotEmpty({ message: 'O nome da empresa é obrigatório para anunciantes' })
-  //@IsString({ message: 'O nome da empresa deve ser uma string' })
+  @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
+  @IsNotEmpty({ message: 'O nome da empresa é obrigatório para anunciantes' })
+  @IsString({ message: 'O nome da empresa deve ser uma string' })
   companyName?: string;
 
-   @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
-  // @IsNotEmpty({ message: 'O CNPJ é obrigatório para anunciantes' })
-  //@IsString({ message: 'O CNPJ deve ser uma string' })
-  cnpj?: string;
+  @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
+  @IsNotEmpty({ message: 'O CNPJ é obrigatório para anunciantes' })
+  @IsString({ message: 'O CNPJ deve ser uma string' })
+  CNPJ?: string;
 }

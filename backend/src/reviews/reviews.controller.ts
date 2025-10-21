@@ -1,7 +1,11 @@
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { CreateReviewDto } from './dto/create-reviews.dto';
 
+
+
+@ApiBearerAuth()
 @ApiTags('reviews')
 @Controller('reviews')
 export class ReviewsController {
@@ -9,8 +13,8 @@ constructor(private reviewsService: ReviewsService) {}
 
 
 @Post()
-create(@Body() body: any) {
-return this.reviewsService.create(body);
+create(@Body() body: CreateReviewDto) {
+    return this.reviewsService.create(body);
 }
 
 
