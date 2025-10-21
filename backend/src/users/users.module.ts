@@ -1,27 +1,32 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { MongooseModule, getModelToken } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { Motorista, MotoristaSchema } from './schemas/motorista.schema';
-import { Anunciante, AnuncianteSchema } from './schemas/anunciante.schema';
+import { MotoristaSchema } from './schemas/motorista.schema';
+import { AnuncianteSchema } from './schemas/anunciante.schema';
+import mongoose from 'mongoose';
 
 @Module({
-    imports: [
-        MongooseModule.forFeatureAsync([
-            {
-                name: User.name,
-                useFactory: () => {
-                    const schema = UserSchema;
-                    schema.discriminator('motorista', MotoristaSchema);
-                    schema.discriminator('anunciante', AnuncianteSchema);
-                    return schema;
-                },
-            },
-        ]),
-    ],
-    controllers: [UsersController],
-    providers: [UsersService],
-    exports: [UsersService],
+  imports: [
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+  ],
+  controllers: [UsersController],
+  providers: [
+    UsersService,
+    {
+      provide: 'MOTORISTA_MODEL',
+      useFactory: (userModel: mongoose.Model<any>) =>
+        userModel.discriminator('motorista', MotoristaSchema),
+      inject: [getModelToken(User.name)],
+    },
+    {
+      provide: 'ANUNCIANTE_MODEL',
+      useFactory: (userModel: mongoose.Model<any>) =>
+        userModel.discriminator('anunciante', AnuncianteSchema),
+      inject: [getModelToken(User.name)],
+    },
+  ],
+  exports: [UsersService, 'MOTORISTA_MODEL', 'ANUNCIANTE_MODEL'],
 })
-export class UsersModule { }
+export class UsersModule {}

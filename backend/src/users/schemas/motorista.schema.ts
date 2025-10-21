@@ -2,7 +2,7 @@ import { SchemaFactory } from '@nestjs/mongoose';
 import { User } from './user.schema';
 import { Prop, Schema } from '@nestjs/mongoose';
 
-export class Motorista extends User {
+export class MotoristaDocument extends User {
     @Prop({ required: true })
     vehicle: string;
 
@@ -17,6 +17,19 @@ export class Motorista extends User {
 
     @Prop({ required: true })
     description: string;
+
+    @Prop({ required: true })
+    carColor: string;
+
+    @Prop({ required: true })
+    seatsAvailable: number;
+
+    @Prop({ required: true })
+    availableDays: string;
+
+    @Prop({ required: true , default: 'offline'})
+    status: string;
+
 }
 
-export const MotoristaSchema = SchemaFactory.createForClass(Motorista);
+export const MotoristaSchema = SchemaFactory.createForClass(MotoristaDocument);

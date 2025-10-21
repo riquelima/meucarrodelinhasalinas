@@ -1,7 +1,8 @@
 import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { RoutesService } from './routes.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags,  } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @ApiTags('routes')
 @Controller('routes')
 export class RoutesController {

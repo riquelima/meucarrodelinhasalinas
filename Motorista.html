@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste Chat Privado (Socket.IO)</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #eee; padding: 20px; }
+    input, button { padding: 8px; margin: 4px; border-radius: 6px; border: none; }
+    input { width: 250px; }
+    ul { list-style: none; padding: 0; }
+    li { margin-bottom: 6px; }
+    .msg-sent { color: #4CAF50; }
+    .msg-received { color: #03A9F4; }
+  </style>
+</head>
+<body>
+  <h2>💬 Teste do Chat Privado</h2>
+  <p>
+    <b>Token JWT:</b> <input id="token" placeholder="Cole aqui seu JWT" />
+    <button onclick="connectSocket()">Conectar</button>
+  </p>
+
+  <div id="chatArea" style="display:none;">
+    <p><b>ID do destinatário:</b> <input id="toUser" placeholder="ID do outro usuário" /></p>
+    <input id="msgInput" placeholder="Digite sua mensagem..." />
+    <button onclick="sendMessage()">Enviar</button>
+    <button onclick="loadHistory()">Ver histórico</button>
+
+    <h3>📜 Mensagens</h3>
+    <ul id="messages"></ul>
+  </div>
+
+  <script>
+    let socket = null;
+
+    function connectSocket() {
+      const token = document.getElementById('token').value.trim();
+      if (!token) return alert('Cole o JWT primeiro!');
+
+      socket = io("http://localhost:3000/chat", {
+        auth: { token } // o gateway lê daqui
+      });
+
+      socket.on("connect", () => {
+        console.log("✅ Conectado ao servidor!");
+        document.getElementById("chatArea").style.display = "block";
+      });
+
+      socket.on("disconnect", () => console.log("❌ Desconectado do servidor"));
+
+      socket.on("error", (msg) => console.warn("⚠️ Erro:", msg));
+
+      socket.on("message_sent", (msg) => {
+        const me = msg.sender?._id || "Você";
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="msg-${msg.sender?._id ? 'received' : 'sent'}">[${me}] ${msg.content}</span>`;
+        document.getElementById("messages").appendChild(li);
+      });
+
+      socket.on("history", (msgs) => {
+        console.log("📜 Histórico recebido:", msgs);
+        document.getElementById("messages").innerHTML = "";
+        msgs.forEach(m => {
+          const li = document.createElement("li");
+          li.textContent = `[${m.sender?.name || m.sender}] ${m.content}`;
+          document.getElementById("messages").appendChild(li);
+        });
+      });
+    }
+
+    function sendMessage() {
+      const to = document.getElementById("toUser").value.trim();
+      const content = document.getElementById("msgInput").value.trim();
+      if (!to || !content) return alert("Preencha o ID e a mensagem");
+      socket.emit("private_message", { to, content });
+      document.getElementById("msgInput").value = "";
+    }
+
+    function loadHistory() {
+      const to = document.getElementById("toUser").value.trim();
+      if (!to) return alert("Informe o ID do outro usuário");
+      socket.emit("get_history", { withUserId: to });
+    }
+  </script>
+</body>
+</html>

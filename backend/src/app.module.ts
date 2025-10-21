@@ -6,7 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RoutesModule } from './routes/routes.module';
 import { ReviewsModule } from './reviews/reviews.module';
-//import { ChatModule } from './chat/chat.module';
+import { MessageModule } from './messages/messages.module';
 import { AdsModule } from './ads/ads.module';
 import { BlogModule } from './blog/blog.module';
 
@@ -18,9 +18,9 @@ import { BlogModule } from './blog/blog.module';
     MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost/meu_carro_db'),
     AuthModule,
     UsersModule,
-    RoutesModule,
+    //RoutesModule,
     ReviewsModule,
-    //ChatModule,
+    MessageModule,
     AdsModule,
     BlogModule,
   ],
