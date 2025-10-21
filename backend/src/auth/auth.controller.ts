@@ -1,9 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/roles.decorator';
+
 
 
 @ApiTags('auth')
@@ -77,7 +78,7 @@ export class AuthController {
       loginUserDto.password,
     );
     if (!user) {
-      throw new Error('Credenciais inválidas');
+      throw new HttpException('Credenciais inválidas', HttpStatus.UNAUTHORIZED);
     }
     return this.authService.login(user);
   }

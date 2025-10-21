@@ -13,7 +13,7 @@ import { BlogModule } from './blog/blog.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // deixa o ConfigModule disponível em toda aplicação
+      isGlobal: true, 
     }),
     MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost/meu_carro_db'),
     AuthModule,
@@ -21,8 +21,8 @@ import { BlogModule } from './blog/blog.module';
     //RoutesModule,
     ReviewsModule,
     MessageModule,
-    AdsModule,
-    BlogModule,
+    AdsModule, 
+    BlogModule, //FALTA IMPLEMENTAR
   ],
 })
 export class AppModule {}

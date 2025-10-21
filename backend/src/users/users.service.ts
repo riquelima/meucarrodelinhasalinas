@@ -92,8 +92,9 @@ export class UsersService {
     }
 
     async findAllMotoristas() {
-        return this.motoristaModel.find().lean();
+        return this.motoristaModel.find().lean().exec();
     }
+
 
     async findAllAnunciantes() {
         return this.anuncianteModel.find().lean();
