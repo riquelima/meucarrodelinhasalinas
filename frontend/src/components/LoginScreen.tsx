@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Car } from "lucide-react";
-import { useState } from "react";
+import ErrorPage from "../error";
+import Loading from "../loading";
 
 interface LoginScreenProps {
   onNavigate: (screen: string) => void;
@@ -12,20 +14,54 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simular login baseado no email
-    if (email.includes('admin')) {
-      onLogin('admin');
-    } else if (email.includes('driver') || email.includes('motorista')) {
-      onLogin('driver');
-    } else if (email.includes('anunciante') || email.includes('advertiser')) {
-      onLogin('advertiser');
-    } else {
-      onLogin('passenger');
+    setIsLoading(true);
+    setFormError(null);
+
+    try {
+      const response = await fetch("http://localhost:3000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          Array.isArray(data.message)
+            ? data.message.join(", ")
+            : data.message || "Falha ao realizar login"
+        );
+      }
+
+      localStorage.setItem("token", data.access_token);
+
+      const role = data.user?.role || "passenger";
+      onLogin(role);
+    } catch (err: any) {
+      setFormError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) return <Loading />;
+
+  if (formError) {
+    return (
+      <ErrorPage
+        error={new Error(formError)}
+        reset={() => setFormError(null)}
+        onHome={() => onNavigate("home")}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
@@ -42,7 +78,9 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
         <CardContent className="p-6 pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm">E-mail</Label>
+              <Label htmlFor="email" className="text-sm">
+                E-mail
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -50,29 +88,35 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
                 className="bg-input-background h-11"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
-              <p className="text-xs text-muted-foreground">
-                Dica: Use "admin@email.com" para entrar como administrador (apenas para desenvolvimento)
-              </p>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm">Senha</Label>
+              <Label htmlFor="password" className="text-sm">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 className="bg-input-background h-11"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
+
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-11">
               Entrar
             </Button>
           </form>
+
           <div className="mt-6 text-center space-y-2">
             <p className="text-muted-foreground text-sm">
               Não tem uma conta?{" "}
               <button
-                onClick={() => onNavigate('signup')}
+                onClick={() => onNavigate("signup")}
                 className="text-blue-500 hover:underline"
               >
                 Cadastrar-se
@@ -80,7 +124,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
             </p>
             <p className="text-muted-foreground text-sm">
               <button
-                onClick={() => onNavigate('forgot-password')}
+                onClick={() => onNavigate("forgot-password")}
                 className="text-blue-500 hover:underline"
               >
                 Esqueceu sua senha?
