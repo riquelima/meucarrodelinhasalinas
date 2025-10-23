@@ -172,4 +172,8 @@ export class UsersService {
     async findAllUsers() {
         return this.userModel.find().lean().exec();
     }
+
+    async getUserCount() {
+        return this.userModel.countDocuments();
+    }
 }

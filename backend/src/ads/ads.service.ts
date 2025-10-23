@@ -105,5 +105,9 @@ export class AdsService {
         if (!ad) throw new NotFoundException('Anúncio não encontrado');
 
         return this.adsModel.findByIdAndUpdate(adId, { $inc: { views: 1 } }, { new: true });
-    }    
+    }
+    
+    async getAdsCount() {
+        return this.adsModel.countDocuments();
+    }
 }
