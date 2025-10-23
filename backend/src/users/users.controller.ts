@@ -1,8 +1,10 @@
-import { Controller, Delete, Get, Param, Patch, Put, Body, Req } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Put, Body, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { get } from 'mongoose';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
+
 
 
 
@@ -51,7 +53,8 @@ export class UsersController {
 
     @Put(':id')
     @ApiOperation({ summary: 'Atualiza os dados do usuário' })
-    updateMe(@Body() dto: UpdateUserDto, @Param('id') id: string) {
-        return this.usersService.updateCurrentUser(dto, id);
+    @UseInterceptors(FileInterceptor('avatar'))
+    updateMe(@Body() dto: UpdateUserDto, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File,) {
+        return this.usersService.updateCurrentUser(dto, id, file);
     }
 }

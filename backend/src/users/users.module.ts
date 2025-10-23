@@ -5,14 +5,17 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { MotoristaSchema } from './schemas/motorista.schema';
 import mongoose from 'mongoose';
+import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    
   ],
   controllers: [UsersController],
   providers: [
     UsersService,
+    CloudinaryService,
     {
       provide: 'MOTORISTA_MODEL',
       useFactory: (userModel: mongoose.Model<any>) =>
