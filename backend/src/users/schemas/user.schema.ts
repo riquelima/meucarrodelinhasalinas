@@ -39,11 +39,17 @@ export class User {
     @Prop({ default: 0 })
     profileViews: number;
 
-    @Prop()
+    @Prop({ default: '' })
     avatar?: string;
 
     @Prop({ required: true })
     number: string;
+
+    @Prop({ default: '' })
+    cnpj: string;
+
+    @Prop({ default: '' })
+    companyName: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

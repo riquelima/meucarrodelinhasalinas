@@ -67,10 +67,10 @@ export class CreateUserDto {
   @IsString({ message: 'O destino deve ser uma string' })
   destination?: string;
 
-  @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'A descrição é obrigatória para motoristas' })
-  @IsString({ message: 'A descrição deve ser uma string' })
-  description?: string;
+  //@ValidateIf(o => o.role === UserRole.MOTORISTA)
+  @IsOptional()
+  //@IsString({ message: 'A descrição deve ser uma string' })
+  description?: string; // opcional para motoristas
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
   @IsNotEmpty({ message: 'A cor do carro é obrigatória para motoristas' })
@@ -82,18 +82,16 @@ export class CreateUserDto {
   seatsAvailable?: number;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'Os horarios disponiveis são obrigatórios para motoristas' })
-  @IsString({ message: 'Os horarios disponíveis devem ser uma string' })
+  @IsNotEmpty({ message: 'Os horários disponíveis são obrigatórios para motoristas' })
+  @IsString({ message: 'Os horários disponíveis devem ser uma string' })
   availableDays?: string;
 
-  // ANUNCIANTE
-   @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
-  // @IsNotEmpty({ message: 'O nome da empresa é obrigatório para anunciantes' })
+  // ANUNCIANTE 
+  @IsOptional()
   //@IsString({ message: 'O nome da empresa deve ser uma string' })
   companyName?: string;
 
-   @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
-  // @IsNotEmpty({ message: 'O CNPJ é obrigatório para anunciantes' })
+  @IsOptional()
   //@IsString({ message: 'O CNPJ deve ser uma string' })
   cnpj?: string;
 }
