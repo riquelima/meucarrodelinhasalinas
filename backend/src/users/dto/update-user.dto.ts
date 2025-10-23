@@ -46,6 +46,9 @@ export class UpdateUserDto {
   @IsNotEmpty({ message: 'O número é obrigatório' })
   number: string;
 
+  @IsOptional()
+  avatar?: string;
+
   // MOTORISTA
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
   @IsNotEmpty({ message: 'O veículo é obrigatório para motoristas' })

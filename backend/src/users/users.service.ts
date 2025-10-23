@@ -6,12 +6,14 @@ import { REQUEST } from '@nestjs/core';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 import { MotoristaDocument } from './schemas/motorista.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
-        @Inject('MOTORISTA_MODEL') private motoristaModel: Model<MotoristaDocument>,        
+        @Inject('MOTORISTA_MODEL') private motoristaModel: Model<MotoristaDocument>,
+        private readonly cloudinaryService: CloudinaryService,
     ) { }
 
     /** Método auxiliar para escolher o model pelo role do Id */
@@ -44,8 +46,8 @@ export class UsersService {
         let created;
         switch (dto.role) {
             case UserRole.MOTORISTA:
-                created = new this.motoristaModel({ ...dto, password: hashed});
-                break;            
+                created = new this.motoristaModel({ ...dto, password: hashed });
+                break;
             default:
                 created = new this.userModel({ ...dto, password: hashed });
                 break;
@@ -55,8 +57,15 @@ export class UsersService {
     }
 
     /** Atualiza dados do usuário atual com base no userId */
-    async updateCurrentUser(updateData: UpdateUserDto, idUser: string) {
-        const model = await this.getModelByRoleFromUser(idUser);        
+    async updateCurrentUser(updateData: UpdateUserDto, idUser: string, file?: Express.Multer.File) {
+        const model = await this.getModelByRoleFromUser(idUser);
+
+        if (file) {
+            const url = await this.cloudinaryService.uploadImage(file, 'users_avatar');
+            console.log('URL da imagem enviada para o Cloudinary:', url);
+            updateData.avatar = url.secure_url;
+        }
+
 
         // Atualiza e retorna o documento atualizado do Mongoose
         const updatedUser = await model.findByIdAndUpdate(
@@ -67,7 +76,7 @@ export class UsersService {
 
         if (!updatedUser) throw new NotFoundException('Usuário não encontrado');
 
-        return updatedUser; 
+        return updatedUser;
     }
 
 
@@ -115,13 +124,13 @@ export class UsersService {
 
 
     async findByEmail(email: string) {
-        const user = await this.userModel.findOne({ email }).lean();        
+        const user = await this.userModel.findOne({ email }).lean();
         return user;
     }
 
     /** Encontrar usuario por ID com dados basicos */
     async findById(id: string) {
-        const user = await this.userModel.findById(id).lean();        
+        const user = await this.userModel.findById(id).lean();
         return user;
     }
 
@@ -130,12 +139,9 @@ export class UsersService {
         const model = await this.getModelByRoleFromUser(id);
         const userReturn = await model.findById(id).lean();
 
-        console.log('User found:', model.modelName);
-
         if (!userReturn) throw new NotFoundException('Usuário não encontrado');
-        
+
         if (model === this.motoristaModel) {
-            console.log('Incrementando profile view do motorista');
             await this.incrementProfileView(id);
         }
 

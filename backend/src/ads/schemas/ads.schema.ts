@@ -24,11 +24,11 @@ export class Ads {
     @Prop({ required: true })
     numberPhone: string;
 
-    @Prop()
+    @Prop({ required: true })
     description: string;
 
     @Prop({ required: true })
-    urlImage: string;
+    image: string;
 
     @Prop({ required: true, enum: AdsCategory })
     category: AdsCategory;
