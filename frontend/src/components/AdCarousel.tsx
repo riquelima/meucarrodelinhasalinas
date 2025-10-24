@@ -1,5 +1,11 @@
 import { Card } from "./ui/card";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "./ui/carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "./ui/carousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -51,10 +57,15 @@ export function AdCarousel() {
   }, [api]);
 
   if (isLoading) return <Loading />;
-  if (error) return <ErrorPage error={new Error(error)} reset={() => setError(null)} />;
+  if (error)
+    return <ErrorPage error={new Error(error)} reset={() => setError(null)} />;
 
   if (ads.length === 0)
-    return <p className="text-center text-muted-foreground">Nenhum anúncio disponível no momento.</p>;
+    return (
+      <p className="text-center text-muted-foreground">
+        Nenhum anúncio disponível no momento.
+      </p>
+    );
 
   return (
     <div className="w-full">
@@ -77,13 +88,22 @@ export function AdCarousel() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <h3 className="text-white mb-1">{ad.nameCompany}</h3>
-                        <p className="text-white/90 text-sm">{ad.description}</p>
+                        <p className="text-white/90 text-sm">
+                          {ad.description}
+                        </p>
                       </div>
                       <a
-                        href={`tel:${ad.numberPhone}`}
-                        className="flex-shrink-0 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                        href={`https://wa.me/${
+                          ad.numberPhone
+                        }?text=${encodeURIComponent(
+                          `Olá, vi seu anúncio no Meu Carro de Linha!`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 w-8 h-8 bg-green-500/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-600/80 transition-colors"
+                        title="Conversar no WhatsApp"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="w-4 h-4 text-white" />
                       </a>
                     </div>
                   </div>
