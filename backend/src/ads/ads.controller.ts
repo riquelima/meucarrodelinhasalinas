@@ -32,6 +32,12 @@ export class AdsController {
     return this.adsService.getRandomActiveAds(limit ? Number(limit) : 5);
   }
 
+  @Get('count')
+  @ApiOperation({ summary: 'Retorna a contagem total de anúncios' })
+  async getAdsCount() {
+    return this.adsService.getAdsCount();
+  }
+
   
   @ApiOperation({ summary: 'Cria um novo anúncio' })  
   @Post(':userId/anuncios')
@@ -59,4 +65,6 @@ export class AdsController {
   async updateAd(@Param('id') id: string, @Body() dto: UpdateAdsDto, @UploadedFile() file?: Express.Multer.File) {
     return this.adsService.updateAd(id, dto, file);
   }
+
+  
 }

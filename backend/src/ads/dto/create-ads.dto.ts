@@ -4,11 +4,6 @@ import { AdsCategory } from '../schemas/ads.schema';
 
 export class CreateAdsDto {
 
-  @ApiProperty({ example: 'Supermercado São João', description: 'Nome da empresa anunciante' })
-  @IsString({ message: 'O nome da empresa deve ser uma string' })
-  @IsNotEmpty({ message: 'O nome da empresa é obrigatório' })
-  idUser: string;
-
 
   @ApiProperty({ example: 'Supermercado São João', description: 'Nome da empresa anunciante' })
   @IsString({ message: 'O nome da empresa deve ser uma string' })

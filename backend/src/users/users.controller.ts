@@ -26,6 +26,12 @@ export class UsersController {
         return this.usersService.findAllUsers();
     }
 
+    @Get('count')
+    @ApiOperation({ summary: 'Retorna a contagem total de usuários' })
+    async getUserCount() {
+        return this.usersService.getUserCount();
+    }
+
     @Get('motoristas/profile-views/top')
     @ApiOperation({ summary: 'Retorna os motoristas com mais visualizações de perfil' })
     async getTopMotoristasByProfileViews() {
