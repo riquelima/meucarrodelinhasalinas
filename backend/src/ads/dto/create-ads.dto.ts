@@ -21,7 +21,7 @@ export class CreateAdsDto {
   description?: string;
 
   @ApiProperty({ example: 'https://exemplo.com/imagem.jpg', description: 'URL da imagem do anúncio' })  
-  @IsNotEmpty({ message: 'A URL da imagem é obrigatória' })
+  @IsOptional()  
   image: string;
 
   @ApiProperty({ enum: AdsCategory, example: AdsCategory.ALIMENTACAO, description: 'Categoria do anúncio' })
@@ -33,4 +33,5 @@ export class CreateAdsDto {
   @IsOptional()
   @IsBoolean({ message: 'O isActive deve ser booleano' })
   isActive?: boolean;
+
 }
