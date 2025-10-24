@@ -8,12 +8,11 @@ import Loading from "../loading";
 import ErrorPage from "../error";
 
 interface Ad {
-  id: number;
+  _id: string;
   nameCompany: string;
   description: string;
-  image: string;
+  image?: string;
   numberPhone: string;
-  isActive: boolean;
 }
 
 export function AdCarousel() {
@@ -31,8 +30,7 @@ export function AdCarousel() {
         const res = await fetch("http://localhost:3000/ads/random");
         if (!res.ok) throw new Error("Falha ao carregar anúncios");
         const data: Ad[] = await res.json();
-        // Filtra apenas anúncios ativos
-        setAds(data.filter(ad => ad.isActive));
+        setAds(data);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -63,12 +61,15 @@ export function AdCarousel() {
       <Carousel className="w-full" setApi={setApi} opts={{ loop: true }}>
         <CarouselContent>
           {ads.map((ad) => (
-            <CarouselItem key={ad.id}>
+            <CarouselItem key={ad._id || ad.nameCompany}>
               <Card className="overflow-hidden shadow-sm border-border bg-card">
                 <div className="relative h-40 sm:h-48 md:h-56">
                   <ImageWithFallback
-                    src={ad.image}
-                    alt={ad.nameCompany}
+                    src={
+                      ad.image ||
+                      "https://via.placeholder.com/600x400?text=An%C3%BAncio"
+                    }
+                    alt={ad.description || "Imagem do anúncio"}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
