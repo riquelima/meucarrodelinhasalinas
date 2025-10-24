@@ -26,4 +26,12 @@ export class UpdateBlogDto {
   @ApiProperty({ required: false })
   @IsOptional()
   image?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  image2?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  image3?: string;
 }

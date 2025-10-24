@@ -29,6 +29,9 @@ export class Blog extends Document {
     @Prop({ required: true })
     image: string;
 
+    @Prop({ default: true })
+    isPublished: boolean;
+
 }
 
 export const BlogSchema = SchemaFactory.createForClass(Blog);

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { BlogCategory } from '../schemas/blog.schema';
 
 export class CreateBlogDto {
@@ -22,7 +22,20 @@ export class CreateBlogDto {
   @IsEnum(BlogCategory)
   category: BlogCategory;
 
-  @ApiProperty({ required: false, description: 'Imagem do blog (arquivo)' })
+  @ApiProperty({ required: false, description: 'Imagem do blog principal (arquivo)' })
   @IsOptional()
   image?: string;
+
+  @ApiProperty({ required: false, description: 'Imagem do blog 2 (arquivo)' })
+  @IsOptional()
+  image2?: string;
+
+  @ApiProperty({ required: false, description: 'Imagem do blog 3 (arquivo)' })
+  @IsOptional()
+  image3?: string;
+
+  @ApiProperty({ required: false, description: 'Indica se o blog está publicado' })
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
 }

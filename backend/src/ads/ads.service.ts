@@ -20,20 +20,24 @@ export class AdsService {
     // Criar novo anúncio
     async create(createAdsDto: CreateAdsDto, userId: string, file: Express.Multer.File) {
 
-        const userObjectId = new Types.ObjectId(userId);
-
         const user = await this.usersService.findById(userId);
+        let imageUrl: string | null = null;
+
         if (!user) {
             throw new NotFoundException('Usuário não encontrado');
         }
 
         if (user.role !== 'anunciante' && user.role !== 'admin') {
             throw new NotFoundException('Apenas anunciantes ou administradores podem criar anúncios');
+        }       
+
+
+        if (file) {
+            const uploadResult = await this.cloudinaryService.uploadImage(file, 'blog-images');
+            imageUrl = uploadResult.secure_url;
         }
 
-        const image = await this.cloudinaryService.uploadImage(file, 'ads');
-
-        const ad = new this.adsModel({ ...createAdsDto, userObjectId, image });
+        const ad = new this.adsModel({ ...createAdsDto, userId, image: imageUrl });
         return ad.save();
     }
 
@@ -51,14 +55,14 @@ export class AdsService {
             },
         ]);
     }
-   
+
     async getUserAds(userId: string) {
         return this.adsModel.find({ userId: new Types.ObjectId(userId) }).lean();
     }
-    
+
     async getUserKpis(userId: string) {
-        const userObjectId = new Types.ObjectId(userId);       
-        
+        const userObjectId = new Types.ObjectId(userId);
+
 
         const [stats] = await this.adsModel.aggregate([
             { $match: { userId: userObjectId } },
@@ -71,7 +75,7 @@ export class AdsService {
                 },
             },
         ]);
-        
+
         const conversionRate =
             stats && stats.totalAds > 0 ? (stats.totalViews / stats.totalAds).toFixed(2) : 0;
 
@@ -99,14 +103,14 @@ export class AdsService {
             { new: true },
         );
     }
-    
+
     async incrementViews(adId: string) {
         const ad = await this.adsModel.findById(adId);
         if (!ad) throw new NotFoundException('Anúncio não encontrado');
 
         return this.adsModel.findByIdAndUpdate(adId, { $inc: { views: 1 } }, { new: true });
     }
-    
+
     async getAdsCount() {
         return this.adsModel.countDocuments();
     }
