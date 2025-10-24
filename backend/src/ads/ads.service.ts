@@ -49,7 +49,7 @@ export class AdsService {
                 $project: {
                     nameCompany: 1,
                     description: 1,
-                    urlImage: 1,
+                    image: 1,
                     numberPhone: 1,
                 },
             },
@@ -113,5 +113,9 @@ export class AdsService {
 
     async getAdsCount() {
         return this.adsModel.countDocuments();
+    }
+
+    async getAllAds() {
+        return this.adsModel.find().lean();
     }
 }
