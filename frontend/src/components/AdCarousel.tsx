@@ -1,79 +1,118 @@
 import { Card } from "./ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "./ui/carousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CarouselApi } from "./ui/carousel";
+import Loading from "../loading";
+import ErrorPage from "../error";
+
+interface Ad {
+  _id: string;
+  nameCompany: string;
+  description: string;
+  image?: string;
+  numberPhone: string;
+  isActive?: boolean;
+}
 
 export function AdCarousel() {
   const [api, setApi] = useState<CarouselApi>();
+  const [ads, setAds] = useState<Ad[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Fetch ads
   useEffect(() => {
-    if (!api) return;
+    const fetchAds = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("http://localhost:3000/ads/random");
+        if (!res.ok) throw new Error("Falha ao carregar anúncios");
+        const data: Ad[] = await res.json();
+
+        // Filtra apenas anúncios ativos
+        const filtered = data.filter(ad => ad.isActive !== false);
+        setAds(filtered);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAds();
+  }, []);
+
+  // Auto-scroll carousel aleatório
+  useEffect(() => {
+    if (!api || ads.length === 0) return;
+
+    let shownAds: number[] = [];
+    let lastIndex = -1;
 
     const intervalId = setInterval(() => {
-      api.scrollNext();
-    }, 5000); // Change slide every 5 seconds
+      let nextIndex: number;
+
+      if (ads.length > 15) {
+        // Garante que o anúncio não se repita até mostrar todos
+        if (shownAds.length === ads.length) shownAds = [];
+        do {
+          nextIndex = Math.floor(Math.random() * ads.length);
+        } while (shownAds.includes(nextIndex) || nextIndex === lastIndex);
+        shownAds.push(nextIndex);
+      } else {
+        // Apenas evita repetição direta
+        do {
+          nextIndex = Math.floor(Math.random() * ads.length);
+        } while (nextIndex === lastIndex);
+      }
+
+      lastIndex = nextIndex;
+      api.scrollTo(nextIndex);
+    }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [api]);
+  }, [api, ads]);
 
-  const ads = [
-    {
-      id: 1,
-      image: "https://images.unsplash.com/photo-1659490223871-bc0f2a794818?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmb29kJTIwcmVzdGF1cmFudCUyMGFkdmVydGlzaW5nfGVufDF8fHx8MTc2MDY2NTQyMnww&ixlib=rb-4.1.0&q=80&w=1080",
-      title: "Restaurante Sabor & Arte",
-      description: "Almoço executivo com 20% de desconto",
-    },
-    {
-      id: 2,
-      image: "https://images.unsplash.com/photo-1758403463317-56ae333c3f11?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaXRuZXNzJTIwZ3lmJTIwYmFubmVyfGVufDF8fHx8MTc2MDY2NTQyMnww&ixlib=rb-4.1.0&q=80&w=1080",
-      title: "Academia FitLife",
-      description: "Primeira semana grátis para novos alunos",
-    },
-    {
-      id: 3,
-      image: "https://images.unsplash.com/photo-1713937186755-70c860d61049?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaG9wcGluZyUyMHNhbGUlMjBiYW5uZXJ8ZW58MXx8fHwxNzYwNjEzMzcxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-      title: "Shopping Center Plaza",
-      description: "Mega liquidação de verão até 70% OFF",
-    },
-    {
-      id: 4,
-      image: "https://images.unsplash.com/photo-1682956892295-4326f513272d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBzaG9wJTIwYWR2ZXJ0aXNlbWVudHxlbnwxfHx8fDE3NjA2NjU0MjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      title: "Café Aroma & Sabor",
-      description: "2 cafés pelo preço de 1 até as 10h",
-    },
-    {
-      id: 5,
-      image: "https://images.unsplash.com/photo-1655140141886-4d02a7b99b9f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWNoJTIwZ2FkZ2V0cyUyMGJhbm5lcnxlbnwxfHx8fDE3NjA2NjU0MjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      title: "TechStore",
-      description: "Lançamento: Novos smartphones com cashback",
-    },
-  ];
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorPage error={new Error(error)} reset={() => setError(null)} />;
+
+  if (ads.length === 0)
+    return <p className="text-center text-muted-foreground">Nenhum anúncio disponível no momento.</p>;
 
   return (
     <div className="w-full">
       <Carousel className="w-full" setApi={setApi} opts={{ loop: true }}>
         <CarouselContent>
           {ads.map((ad) => (
-            <CarouselItem key={ad.id}>
+            <CarouselItem key={ad._id}>
               <Card className="overflow-hidden shadow-sm border-border bg-card">
                 <div className="relative h-40 sm:h-48 md:h-56">
                   <ImageWithFallback
-                    src={ad.image}
-                    alt={ad.title}
+                    src={ad.image || "https://via.placeholder.com/600x400?text=An%C3%BAncio"}
+                    alt={ad.nameCompany}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <h3 className="text-white mb-1">{ad.title}</h3>
+                        <h3 className="text-white mb-1">{ad.nameCompany}</h3>
                         <p className="text-white/90 text-sm">{ad.description}</p>
                       </div>
-                      <button className="flex-shrink-0 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
+                      <a
+                        href={`https://wa.me/${ad.numberPhone}?text=${encodeURIComponent(
+                          `Olá, vi seu anúncio no Meu Carro de Linha!`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 w-8 h-8 bg-green-500/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-600/80 transition-colors"
+                        title="Conversar no WhatsApp"
+                      >
+                        <ExternalLink className="w-4 h-4 text-white" />
+                      </a>
                     </div>
                   </div>
                 </div>
