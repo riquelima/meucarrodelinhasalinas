@@ -32,6 +32,11 @@ export class AdsController {
     return this.adsService.getRandomActiveAds(limit ? Number(limit) : 5);
   }
 
+  @Get()
+  async getAllAds() {
+    return this.adsService.getAllAds();
+  }
+
   @Get('count')
   @ApiOperation({ summary: 'Retorna a contagem total de anúncios' })
   async getAdsCount() {
