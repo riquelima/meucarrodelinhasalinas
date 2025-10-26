@@ -3,12 +3,10 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Switch } from "./ui/switch";
-import { Star, Car, TrendingUp, Award, Edit2, Camera, LogOut, Sun, Moon, Radio, Clock, Plus, Trash2, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Star, Car, TrendingUp, Award, Edit2, Camera, LogOut, Radio, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
@@ -18,14 +16,25 @@ interface UserProfile {
   name: string;
   email: string;
   password?: string;
-  totalReviews: number;
-  avgRating: number;
-  profileViews: number;
+  totalReviews?: number;
+  avgRating?: number;
+  profileViews?: number;
   avatar?: string;
   number: string;
   role: 'passageiro' | 'motorista' | 'anunciante' | 'admin';
-  createdAt: { $date: string };
-  updatedAt: { $date: string };
+  createdAt?: { $date: string } | string;
+  updatedAt?: { $date: string } | string;
+  vehicle?: string;
+  licensePlate?: string;
+  origin?: string;
+  destination?: string;
+  description?: string;
+  carColor?: string;
+  seatsAvailable?: number;
+  availableDays?: string;
+  cnpj?: string;
+  companyName?: string;
+  status?: string;
 }
 
 interface ProfileScreenProps {
@@ -41,6 +50,10 @@ const initialProfileState: UserProfile = {
   name: '',
   email: '',
   role: 'passageiro',
+  number: '',
+  totalReviews: 0,
+  avgRating: 0,
+  profileViews: 0,
 };
 
 const getUserTypeFromRole = (role: string): UIType => {
@@ -51,7 +64,7 @@ const getUserTypeFromRole = (role: string): UIType => {
 };
 
 interface DecodedToken {
-  userId: string;
+  sub: string;
   email: string;
   role: string;
   iat: number;
@@ -88,21 +101,48 @@ const fetchUserProfile = async (): Promise<UserProfile> => {
   return data;
 };
 
+const updateUserProfile = async (userId: string, formData: FormData): Promise<UserProfile> => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Token de autenticação não encontrado.");
+  }
+
+  const response = await fetch(`http://localhost:3000/users/${userId}`, {
+    method: 'PATCH',
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errorMessage = "Falha ao atualizar dados do perfil.";
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorData.error || errorMessage;
+    } catch (e) {
+      errorMessage = `Erro ${response.status}: ${response.statusText}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  const data = await response.json();
+  return data;
+};
 
 export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenProps) {
   const [profile, setProfile] = useState<UserProfile>(initialProfileState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [isEditing, setIsEditing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const [autoScheduleEnabled, setAutoScheduleEnabled] = useState(false);
-  const [schedules, setSchedules] = useState([
-    { id: 1, day: 'Segunda a Sexta', startTime: '07:00', endTime: '08:00', enabled: true },
-  ]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-
-  // Determina o userType para a lógica de UI (cores, estatísticas)
   const userType = getUserTypeFromRole(profile.role);
 
   useEffect(() => {
@@ -110,7 +150,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
       try {
         const data = await fetchUserProfile();
         setProfile(data);
-      } catch (err) {
+        setPreviewUrl(data.avatar || null);
+      } catch (err: any) {
         console.error('Erro ao buscar perfil:', err);
         setError('Não foi possível carregar os dados do perfil.');
       } finally {
@@ -121,41 +162,6 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     loadProfile();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="pt-20 flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="ml-2 text-lg">Carregando perfil...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="pt-20 p-4 max-w-4xl mx-auto text-center">
-        <h1 className="text-xl text-red-500">Erro ao carregar</h1>
-        <p className="text-muted-foreground">{error}</p>
-      </div>
-    );
-  }
-
-  const addSchedule = () => {
-    setSchedules([...schedules, {
-      id: Date.now(),
-      day: 'Segunda a Sexta',
-      startTime: '00:00',
-      endTime: '00:00',
-      enabled: true
-    }]);
-  };
-
-  const removeSchedule = (id: number) => {
-    setSchedules(schedules.filter(s => s.id !== id));
-  };
-
-  const updateSchedule = (id: number, field: string, value: string | boolean) => {
-    setSchedules(schedules.map(s => s.id === id ? { ...s, [field]: value } : s));
-  };
 
   const getColor = () => {
     switch (userType) {
@@ -193,10 +199,10 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     }
   };
 
-
-  const formatFullDate = (isoDate: string) => {
+  const formatFullDate = (isoDate: string | { $date: string } | undefined) => {
     if (!isoDate) return "";
-    const date = new Date(isoDate);
+    const date = typeof isoDate === 'string' ? new Date(isoDate) : new Date(isoDate.$date);
+    if (isNaN(date.getTime())) return "";
     const formatted = date.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "long",
@@ -205,15 +211,182 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validação do arquivo
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      
+      if (file.size > maxSize) {
+        setError('A imagem deve ter no máximo 2MB.');
+        return;
+      }
+      
+      if (!allowedTypes.includes(file.type)) {
+        setError('Formato de arquivo não suportado. Use JPG, PNG ou WEBP.');
+        return;
+      }
+      
+      setError(null);
+      
+      // Redimensionar imagem
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        const maxWidth = 800;
+        const maxHeight = 800;
+        let { width, height } = img;
+        
+        // Calcular novas dimensões mantendo proporção
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Desenhar imagem redimensionada
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Converter para blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const resizedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            setSelectedFile(resizedFile);
+            
+            // Preview da imagem redimensionada
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setPreviewUrl(reader.result as string);
+            };
+            reader.readAsDataURL(resizedFile);
+          }
+        }, 'image/jpeg', 0.8);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const newPasswordValue = newPassword.trim();
+      const confirmPasswordValue = confirmPassword.trim();
+
+      if (newPasswordValue) {
+        if (newPasswordValue.length < 6) {
+          setError('A nova senha deve ter pelo menos 6 caracteres.');
+          setIsSaving(false);
+          return;
+        }
+
+        if (newPasswordValue !== confirmPasswordValue) {
+          setError('As senhas não coincidem.');
+          setIsSaving(false);
+          return;
+        }
+
+        if (!currentPassword.trim()) {
+          setError('Digite sua senha atual para alterar a senha.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const formData = new FormData();
+      
+      if (selectedFile) {
+        formData.set('avatar', selectedFile);
+      }
+
+      const target = e.currentTarget;
+      formData.set('name', target.name.value);
+      formData.set('email', target.email.value);
+      formData.set('number', target.number.value);
+
+      if (userType === 'driver') {
+        if (target.vehicle?.value) formData.set('vehicle', target.vehicle.value);
+        if (target.licensePlate?.value) formData.set('licensePlate', target.licensePlate.value);
+        if (target.origin?.value) formData.set('origin', target.origin.value);
+        if (target.destination?.value) formData.set('destination', target.destination.value);
+        if (target.carColor?.value) formData.set('carColor', target.carColor.value);
+        if (target.seatsAvailable?.value) formData.set('seatsAvailable', target.seatsAvailable.value);
+        if (target.availableDays?.value) formData.set('availableDays', target.availableDays.value);
+        if (target.description?.value) formData.set('description', target.description.value);
+      }
+
+      if (userType === 'advertiser') {
+        if (target.companyName?.value) formData.set('companyName', target.companyName.value);
+        if (target.cnpj?.value) formData.set('cnpj', target.cnpj.value);
+      }
+      
+      if (newPasswordValue && newPasswordValue.trim() !== '') {
+        formData.set('password', newPasswordValue);
+      }
+
+      const updatedProfile = await updateUserProfile(profile._id, formData);
+      setProfile(updatedProfile);
+      setPreviewUrl(updatedProfile.avatar || null);
+      setIsEditing(false);
+      setSelectedFile(null);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      console.error('Erro ao atualizar perfil:', err);
+      const errorMessage = err.message || 'Não foi possível atualizar os dados do perfil.';
+      
+      setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="pt-20 flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="ml-2 text-lg">Carregando perfil...</p>
+      </div>
+    );
+  }
+
+  if (error && !isEditing) {
+    return (
+      <div className="pt-20 p-4 max-w-4xl mx-auto text-center">
+        <h1 className="text-xl text-red-500">Erro ao carregar</h1>
+        <p className="text-muted-foreground">{error}</p>
+      </div>
+    );
+  }
+
   const stats = userType === 'passenger'
     ? [
-      { label: "Avaliação média", value: profile.avgRating?.toFixed(1) || "N/A", icon: Star },
-      { label: "Membro desde", value: formatFullDate(profile.createdAt?.$date || profile.createdAt), icon: Award },
+      { label: "Avaliação média", value: profile.avgRating?.toFixed(1) || "0.0", icon: Star },
+      { label: "Membro desde", value: formatFullDate(profile.createdAt), icon: Award },
     ]
     : userType === 'driver'
       ? [
-        { label: "Avaliação média", value: profile.avgRating?.toFixed(1) || "N/A", icon: Star },
-        { label: "Membro desde", value: formatFullDate(profile.createdAt?.$date || profile.createdAt), icon: TrendingUp },
+        { label: "Avaliação média", value: profile.avgRating?.toFixed(1) || "0.0", icon: Star },
+        { label: "Membro desde", value: formatFullDate(profile.createdAt), icon: TrendingUp },
       ]
       : userType === 'admin'
         ? [
@@ -247,12 +420,12 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
           )}
         </div>
 
-        {/* Profile Header */}
         <Card className="shadow-sm bg-card border-border">
           <CardContent className="p-4 lg:p-6">
             <div className="flex flex-col sm:flex-row items-center gap-4 lg:gap-6">
               <div className="relative">
                 <Avatar className="w-20 h-20 lg:w-24 lg:h-24">
+                  {previewUrl && <AvatarImage src={previewUrl} alt={profile.name} />}
                   <AvatarFallback className={`${getColor()} text-white text-2xl lg:text-3xl`}>
                     {profile.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                   </AvatarFallback>
@@ -267,9 +440,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                       type="file"
                       accept="image/*"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      onChange={(e) => {
-                        console.log(e.target.files);
-                      }}
+                      onChange={handleFileChange}
                     />
                   </button>
                 )}
@@ -282,7 +453,17 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                 </Badge>
               </div>
               <Button
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => {
+                  if (isEditing) {
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setSelectedFile(null);
+                    setPreviewUrl(profile.avatar || null);
+                    setError(null);
+                  }
+                  setIsEditing(!isEditing);
+                }}
                 variant="outline"
                 className="w-full sm:w-auto h-9 text-sm border-border"
               >
@@ -293,7 +474,6 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
           </CardContent>
         </Card>
 
-        {/* Statistics */}
         <div className={`grid gap-2 sm:gap-4 ${stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {stats.map((stat, index) => {
             const Icon = stat.icon;
@@ -315,56 +495,49 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
           })}
         </div>
 
-        {/* Profile Information */}
         <Card className="shadow-sm bg-card border-border">
           <CardHeader className="p-4">
             <CardTitle className="text-foreground text-base lg:text-lg">Informações Pessoais</CardTitle>
             <CardDescription className="text-xs lg:text-sm">Suas informações de cadastro</CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <form className="space-y-3 lg:space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 lg:space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-sm">Nome Completo</Label>
+                  <Label htmlFor="name" className="text-sm">Nome Completo</Label>
                   <Input
-                    id="firstName"
+                    id="name"
+                    name="name"
                     defaultValue={profile.name}
                     disabled={!isEditing}
+                    required
+                    className="bg-input-background h-10 text-sm border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm">E-mail</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    defaultValue={profile.email}
+                    disabled={!isEditing}
+                    required
                     className="bg-input-background h-10 text-sm border-border"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm">E-mail</Label>
+                <Label htmlFor="number" className="text-sm">Celular</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  defaultValue={profile.email}
+                  id="number"
+                  name="number"
+                  type="tel"
+                  defaultValue={profile.number}
                   disabled={!isEditing}
+                  required
                   className="bg-input-background h-10 text-sm border-border"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Celular</Label>
-                {isEditing ? (
-                  <div className="grid grid-cols-12 gap-2">
-                    <div className="col-span-6">
-                      <Input
-                        id="phoneNumber"
-                        type="tel"
-                        placeholder="98765-4321"
-                        defaultValue={profile.number}
-                        className="bg-input-background h-10 text-sm border-border"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <Input
-                    defaultValue={profile.number}
-                    disabled
-                    className="bg-input-background h-10 text-sm border-border"
-                  />
-                )}
               </div>
               {userType === 'driver' && (
                 <>
@@ -372,7 +545,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                     <Label htmlFor="vehicle" className="text-sm">Veículo</Label>
                     <Input
                       id="vehicle"
-                      defaultValue={profile.vehicle}
+                      name="vehicle"
+                      defaultValue={profile.vehicle || ''}
                       disabled={!isEditing}
                       className="bg-input-background h-10 text-sm border-border"
                     />
@@ -381,56 +555,62 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                     <Label htmlFor="licensePlate" className="text-sm">Placa do Veículo</Label>
                     <Input
                       id="licensePlate"
-                      defaultValue={profile.licensePlate}
+                      name="licensePlate"
+                      defaultValue={profile.licensePlate || ''}
                       disabled={!isEditing}
                       className="bg-input-background h-10 text-sm border-border"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="mainDeparture" className="text-sm">Ponto de Partida Principal</Label>
+                      <Label htmlFor="origin" className="text-sm">Ponto de Partida Principal</Label>
                       <Input
-                        id="mainDeparture"
-                        defaultValue={profile.origin}
+                        id="origin"
+                        name="origin"
+                        defaultValue={profile.origin || ''}
                         disabled={!isEditing}
                         className="bg-input-background h-10 text-sm border-border"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="mainDestination" className="text-sm">Destino Principal</Label>
+                      <Label htmlFor="destination" className="text-sm">Destino Principal</Label>
                       <Input
-                        id="mainDestination"
-                        defaultValue={profile.destination}
+                        id="destination"
+                        name="destination"
+                        defaultValue={profile.destination || ''}
                         disabled={!isEditing}
                         className="bg-input-background h-10 text-sm border-border"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="vehicleColor" className="text-sm">Cor do Veículo</Label>
+                    <Label htmlFor="carColor" className="text-sm">Cor do Veículo</Label>
                     <Input
-                      id="vehicleColor"
-                      defaultValue={profile.carColor}
+                      id="carColor"
+                      name="carColor"
+                      defaultValue={profile.carColor || ''}
                       disabled={!isEditing}
                       className="bg-input-background h-10 text-sm border-border"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="availableSeats" className="text-sm">Vagas Disponíveis</Label>
+                      <Label htmlFor="seatsAvailable" className="text-sm">Vagas Disponíveis</Label>
                       <Input
-                        id="availableSeats"
+                        id="seatsAvailable"
+                        name="seatsAvailable"
                         type="number"
-                        defaultValue={profile.seatsAvailable}
+                        defaultValue={profile.seatsAvailable || ''}
                         disabled={!isEditing}
                         className="bg-input-background h-10 text-sm border-border"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="schedule" className="text-sm">Horário Principal</Label>
+                      <Label htmlFor="availableDays" className="text-sm">Horário Principal</Label>
                       <Input
-                        id="schedule"
-                        defaultValue={profile.availableDays}
+                        id="availableDays"
+                        name="availableDays"
+                        defaultValue={profile.availableDays || ''}
                         disabled={!isEditing}
                         className="bg-input-background h-10 text-sm border-border"
                       />
@@ -440,7 +620,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                     <Label htmlFor="description" className="text-sm">Descrição</Label>
                     <Textarea
                       id="description"
-                      defaultValue={profile.description}
+                      name="description"
+                      defaultValue={profile.description || ''}
                       disabled={!isEditing}
                       className="bg-input-background min-h-[80px] resize-none text-sm border-border"
                     />
@@ -448,18 +629,30 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                 </>
               )}
               {userType === 'advertiser' && (
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj" className="text-sm">CNPJ</Label>
-                  <Input
-                    id="cnpj"
-                    defaultValue="12.345.678/0001-90"
-                    disabled={!isEditing}
-                    className="bg-input-background h-10 text-sm border-border"
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName" className="text-sm">Nome da Empresa</Label>
+                    <Input
+                      id="companyName"
+                      name="companyName"
+                      defaultValue={profile.companyName || ''}
+                      disabled={!isEditing}
+                      className="bg-input-background h-10 text-sm border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cnpj" className="text-sm">CNPJ</Label>
+                    <Input
+                      id="cnpj"
+                      name="cnpj"
+                      defaultValue={profile.cnpj || ''}
+                      disabled={!isEditing}
+                      className="bg-input-background h-10 text-sm border-border"
+                    />
+                  </div>
+                </>
               )}
 
-              {/* Status Online - apenas para motoristas */}
               {userType === 'driver' && (
                 <>
                   <div className="space-y-2">
@@ -489,26 +682,29 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                 </>
               )}
 
-
-              {/* Senha - sempre disponível para edição */}
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword" className="text-sm">Senha Atual</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  placeholder={isEditing ? "Digite sua senha atual" : "••••••••"}
-                  disabled={!isEditing}
-                  className="bg-input-background h-10 text-sm border-border"
-                />
-              </div>
               {isEditing && (
                 <>
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword" className="text-sm">Senha Atual</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Digite sua senha atual"
+                      disabled={!isEditing}
+                      className="bg-input-background h-10 text-sm border-border"
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="newPassword" className="text-sm">Nova Senha</Label>
                     <Input
                       id="newPassword"
                       type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Digite sua nova senha"
+                      disabled={!isEditing}
                       className="bg-input-background h-10 text-sm border-border"
                     />
                   </div>
@@ -517,22 +713,51 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                     <Input
                       id="confirmPassword"
                       type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirme sua nova senha"
+                      disabled={!isEditing}
                       className="bg-input-background h-10 text-sm border-border"
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deixe os campos de senha em branco se não desejar alterar a senha.
+                  </p>
                 </>
               )}
 
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
               {isEditing && (
                 <div className="flex gap-2 pt-2">
-                  <Button type="submit" className={`${getColor()} flex-1 sm:flex-initial h-10 text-sm`}>
-                    Salvar Alterações
+                  <Button 
+                    type="submit" 
+                    className={`${getColor()} flex-1 sm:flex-initial h-10 text-sm`}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      'Salvar Alterações'
+                    )}
                   </Button>
+                  
+                  
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setSelectedFile(null);
+                      setPreviewUrl(profile.avatar || null);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setError(null);
+                    }}
                     className="flex-1 sm:flex-initial h-10 text-sm border-border"
                   >
                     Cancelar
@@ -543,7 +768,6 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
           </CardContent>
         </Card>
 
-        {/* Reviews Section (for drivers and passengers) */}
         {userType !== 'advertiser' && userType !== 'admin' && (
           <Card className="shadow-sm bg-card border-border">
             <CardHeader className="p-4">
