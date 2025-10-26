@@ -57,27 +57,46 @@ export class UsersService {
     }
 
     /** Atualiza dados do usuário atual com base no userId */
-    async updateCurrentUser(updateData: UpdateUserDto, idUser: string, file?: Express.Multer.File) {
+    async updateCurrentUser(
+        updateData: Partial<UpdateUserDto>,
+        idUser: string,
+        file?: Express.Multer.File
+    ) {
         const model = await this.getModelByRoleFromUser(idUser);
 
+        // Busca o documento completo
+        const user = await model.findById(idUser);
+        if (!user) throw new NotFoundException('Usuário não encontrado');
+
+        //Upload de avatar
         if (file) {
             const url = await this.cloudinaryService.uploadImage(file, 'users_avatar');
-            console.log('URL da imagem enviada para o Cloudinary:', url);
             updateData.avatar = url.secure_url;
         }
 
+        // Hash da senha
+        if (updateData.password) {
+            updateData.password = await bcrypt.hash(updateData.password, 10);
+        }
 
-        // Atualiza e retorna o documento atualizado do Mongoose
-        const updatedUser = await model.findByIdAndUpdate(
-            idUser,
-            { $set: updateData },
-            { new: true, runValidators: true }
-        );
+        // Filtra campos válidos
+        const allowedFields = [
+            'name', 'email', 'password', 'number', 'avatar',
+            'vehicle', 'licensePlate', 'origin', 'destination',
+            'description', 'carColor', 'seatsAvailable', 'availableDays', 'status',
+            'companyName', 'cnpj'
+        ];
 
-        if (!updatedUser) throw new NotFoundException('Usuário não encontrado');
+        for (const key of Object.keys(updateData)) {
+            if (allowedFields.includes(key)) {
+                user[key] = updateData[key];
+            }
+        }
 
-        return updatedUser;
+
+        return await user.save();
     }
+
 
 
     /** Atualiza rating de qualquer usuário */
