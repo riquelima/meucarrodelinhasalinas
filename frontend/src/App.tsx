@@ -117,7 +117,7 @@ export default function App() {
         {currentScreen === 'blog' && <BlogScreen />}
         {currentScreen === 'chat' && userType !== 'admin' && <ChatScreen userType={userType} />}
         {currentScreen === 'calculator' && <RideCalculatorScreen userType={userType} />}
-        {currentScreen === 'profile' && <ProfileScreen userType={userType} onLogout={handleLogout} theme={theme} onThemeChange={setTheme} />}
+        {currentScreen === 'profile' && <ProfileScreen onLogout={handleLogout} theme={theme} onThemeChange={setTheme} />}
       </div>
     </div>
   );
