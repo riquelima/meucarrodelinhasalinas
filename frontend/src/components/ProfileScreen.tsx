@@ -101,6 +101,49 @@ const fetchUserProfile = async (): Promise<UserProfile> => {
   return data;
 };
 
+const fetchAdminStats = async (): Promise<{ usersCount: number; adsCount: number; blogsCount: number }> => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Token de autenticação não encontrado.");
+  }
+
+  const [usersResponse, adsResponse, blogsResponse] = await Promise.all([
+    fetch(`http://localhost:3000/users`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    }),
+    fetch(`http://localhost:3000/ads/count`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    }),
+    fetch(`http://localhost:3000/blogs/count/all`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+  ]);
+
+  const usersCount = usersResponse.ok ? (await usersResponse.json()).length : 0;
+  const adsCount = adsResponse.ok ? await adsResponse.json() : 0;
+  const blogsCount = blogsResponse.ok ? await blogsResponse.json() : 0;
+
+  return { usersCount, adsCount, blogsCount };
+};
+
+const fetchAdvertiserStats = async (userId: string): Promise<{ activeAds: number }> => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Token de autenticação não encontrado.");
+  }
+
+  const response = await fetch(`http://localhost:3000/ads/${userId}/my`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    return { activeAds: 0 };
+  }
+
+  const ads = await response.json();
+  return { activeAds: ads.length };
+};
+
 const updateUserProfile = async (userId: string, formData: FormData): Promise<UserProfile> => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -142,6 +185,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [adminStats, setAdminStats] = useState<{ usersCount: number; adsCount: number; blogsCount: number } | null>(null);
+  const [advertiserStats, setAdvertiserStats] = useState<{ activeAds: number } | null>(null);
 
   const userType = getUserTypeFromRole(profile.role);
 
@@ -151,6 +196,22 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
         const data = await fetchUserProfile();
         setProfile(data);
         setPreviewUrl(data.avatar || null);
+
+        if (data.role === 'admin') {
+          try {
+            const stats = await fetchAdminStats();
+            setAdminStats(stats);
+          } catch (err) {
+            console.warn('Erro ao carregar estatísticas de admin:', err);
+          }
+        } else if (data.role === 'anunciante') {
+          try {
+            const stats = await fetchAdvertiserStats(data._id);
+            setAdvertiserStats(stats);
+          } catch (err) {
+            console.warn('Erro ao carregar estatísticas de anunciante:', err);
+          }
+        }
       } catch (err: any) {
         console.error('Erro ao buscar perfil:', err);
         setError('Não foi possível carregar os dados do perfil.');
@@ -203,83 +264,63 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     if (!isoDate) return "";
     const date = typeof isoDate === 'string' ? new Date(isoDate) : new Date(isoDate.$date);
     if (isNaN(date.getTime())) return "";
-    const formatted = date.toLocaleDateString("pt-BR", {
+    return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "long",
       year: "numeric",
     });
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validação do arquivo
-      const maxSize = 2 * 1024 * 1024; // 2MB
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      
-      if (file.size > maxSize) {
-        setError('A imagem deve ter no máximo 2MB.');
-        return;
-      }
-      
-      if (!allowedTypes.includes(file.type)) {
-        setError('Formato de arquivo não suportado. Use JPG, PNG ou WEBP.');
-        return;
-      }
-      
-      setError(null);
-      
-      // Redimensionar imagem
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        const maxWidth = 800;
-        const maxHeight = 800;
-        let { width, height } = img;
-        
-        // Calcular novas dimensões mantendo proporção
-        if (width > height) {
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Desenhar imagem redimensionada
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        // Converter para blob
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const resizedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            setSelectedFile(resizedFile);
-            
-            // Preview da imagem redimensionada
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              setPreviewUrl(reader.result as string);
-            };
-            reader.readAsDataURL(resizedFile);
-          }
-        }, 'image/jpeg', 0.8);
-      };
-      
-      img.src = URL.createObjectURL(file);
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('A imagem deve ter no máximo 2MB.');
+      return;
     }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Selecione um arquivo de imagem válido.');
+      return;
+    }
+
+    setError(null);
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      const maxSize = 800;
+      let { width, height } = img;
+
+      if (width > height) {
+        if (width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        }
+      } else {
+        if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx?.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const resizedFile = new File([blob], file.name, { type: 'image/jpeg' });
+          setSelectedFile(resizedFile);
+          setPreviewUrl(URL.createObjectURL(resizedFile));
+        }
+      }, 'image/jpeg', 0.8);
+    };
+
+    img.src = URL.createObjectURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -312,7 +353,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
       }
 
       const formData = new FormData();
-      
+
       if (selectedFile) {
         formData.set('avatar', selectedFile);
       }
@@ -337,7 +378,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
         if (target.companyName?.value) formData.set('companyName', target.companyName.value);
         if (target.cnpj?.value) formData.set('cnpj', target.cnpj.value);
       }
-      
+
       if (newPasswordValue && newPasswordValue.trim() !== '') {
         formData.set('password', newPasswordValue);
       }
@@ -353,7 +394,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     } catch (err: any) {
       console.error('Erro ao atualizar perfil:', err);
       const errorMessage = err.message || 'Não foi possível atualizar os dados do perfil.';
-      
+
       setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
     } finally {
       setIsSaving(false);
@@ -390,12 +431,12 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
       ]
       : userType === 'admin'
         ? [
-          { label: "Usuários gerenciados", value: "1.2k", icon: Car },
-          { label: "Posts publicados", value: "23", icon: Star },
-          { label: "Anúncios ativos", value: "45", icon: TrendingUp },
+          { label: "Usuários gerenciados", value: adminStats?.usersCount?.toString() || "0", icon: Car },
+          { label: "Posts publicados", value: adminStats?.blogsCount?.toString() || "0", icon: Star },
+          { label: "Anúncios ativos", value: adminStats?.adsCount?.toString() || "0", icon: TrendingUp },
         ]
         : [
-          { label: "Anúncios ativos", value: "3", icon: Car },
+          { label: "Anúncios ativos", value: advertiserStats?.activeAds?.toString() || "0", icon: Car },
           { label: "Visualizações totais", value: "26.8k", icon: Star },
           { label: "Taxa de cliques", value: "6.7%", icon: TrendingUp },
         ];
@@ -730,8 +771,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
 
               {isEditing && (
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className={`${getColor()} flex-1 sm:flex-initial h-10 text-sm`}
                     disabled={isSaving}
                   >
@@ -744,8 +785,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                       'Salvar Alterações'
                     )}
                   </Button>
-                  
-                  
+
+
                   <Button
                     type="button"
                     variant="outline"
