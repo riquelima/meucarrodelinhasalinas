@@ -44,7 +44,7 @@ export class UsersController {
         return this.usersService.deleteAll();
     }
 
-    @Patch(':id')
+    @Patch('/status/:id')
     @ApiOperation({ summary: 'Muda status do motorista' })
     mudarStatusMotorista(@Param('id') id: string, @Body() status: string) {
         return this.usersService.mudarStatusMotorista(id, status);
@@ -57,7 +57,7 @@ export class UsersController {
         return user;
     }
 
-    @Put(':id')
+    @Patch(':id')
     @ApiOperation({ summary: 'Atualiza os dados do usuário' })
     @UseInterceptors(FileInterceptor('avatar'))
     updateMe(@Body() dto: UpdateUserDto, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File,) {

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import {
   IsEmail,
   IsEnum,
@@ -15,7 +15,7 @@ export enum UserRole {
   ANUNCIANTE = 'anunciante',
 }
 
-export class UpdateUserDto {
+export class BaseUserFieldsDto {
   @ApiProperty({ example: 'Gabriel Ramos', description: 'Nome completo do usuário' })
   @IsString({ message: 'O nome deve ser uma string válida' })
   @IsNotEmpty({ message: 'O nome é obrigatório' })
@@ -51,52 +51,48 @@ export class UpdateUserDto {
 
   // MOTORISTA
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'O veículo é obrigatório para motoristas' })
   @IsString({ message: 'O veículo deve ser uma string' })
   vehicle?: string;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'A placa do veículo é obrigatória para motoristas' })
   @IsString({ message: 'A placa do veículo deve ser uma string' })
   licensePlate?: string;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'A origem da rota é obrigatória para motoristas' })
   @IsString({ message: 'A origem deve ser uma string' })
   origin?: string;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'O destino da rota é obrigatório para motoristas' })
   @IsString({ message: 'O destino deve ser uma string' })
   destination?: string;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  //@IsNotEmpty({ message: 'A descrição é obrigatória para motoristas' })
-  //@IsString({ message: 'A descrição deve ser uma string' })
+  @IsString({ message: 'A descrição deve ser uma string' })
   description?: string;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'A cor do carro é obrigatória para motoristas' })
   @IsString({ message: 'A cor do carro deve ser uma string' })
   carColor?: string;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'O número de assentos disponíveis é obrigatório para motoristas' })
   seatsAvailable?: number;
 
   @ValidateIf(o => o.role === UserRole.MOTORISTA)
-  @IsNotEmpty({ message: 'Os horarios disponiveis são obrigatórios para motoristas' })
-  @IsString({ message: 'Os horarios disponíveis devem ser uma string' })
-  AvailableDays?: string;
+  @IsString({ message: 'Os horários disponíveis devem ser uma string' })
+  availableDays?: string;
+
+  @ValidateIf(o => o.role === UserRole.MOTORISTA)
+  @IsString({ message: 'O status deve ser uma string' })
+  status?: string;
 
   // ANUNCIANTE
   @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
-  //@IsNotEmpty({ message: 'O nome da empresa é obrigatório para anunciantes' })
-  //@IsString({ message: 'O nome da empresa deve ser uma string' })
+  @IsString({ message: 'O nome da empresa deve ser uma string' })
   companyName?: string;
 
   @ValidateIf(o => o.role === UserRole.ANUNCIANTE)
-  //@IsNotEmpty({ message: 'O CNPJ é obrigatório para anunciantes' })
-  //@IsString({ message: 'O CNPJ deve ser uma string' })
+  @IsString({ message: 'O CNPJ deve ser uma string' })
   cnpj?: string;
 }
+
+export class UpdateUserDto extends PartialType(BaseUserFieldsDto) { }

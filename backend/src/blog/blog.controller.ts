@@ -23,15 +23,23 @@ export class BlogController {
     @Post()
     @ApiOperation({ summary: 'Cria um novo blog' })
     @UseInterceptors(FileInterceptor('image'))
+    @UseInterceptors(FileInterceptor('image2'))
+    @UseInterceptors(FileInterceptor('image3'))
     async create(
-        @UploadedFile() file: Express.Multer.File, @Body() createBlogDto: CreateBlogDto,) {
-        return this.blogService.create(createBlogDto, file);
+        @UploadedFile() file: Express.Multer.File, @UploadedFile('image2') file2: Express.Multer.File, @UploadedFile('image3') file3: Express.Multer.File, @Body() createBlogDto: CreateBlogDto,) {
+        return this.blogService.create(createBlogDto, file, file2, file3);
     }
 
     @Get()
     @ApiOperation({ summary: 'Lista todos os blogs' })
     async findAll() {
         return this.blogService.findAll();
+    }
+
+    @Get('/home')
+    @ApiOperation({ summary: 'Retorna os blogs para página inicial' })
+    async findHomeBlogs() {
+        return this.blogService.findHomeBlogs();
     }
 
     @Get(':id')
