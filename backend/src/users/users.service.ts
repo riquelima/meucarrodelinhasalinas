@@ -1,29 +1,33 @@
-import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Injectable, Inject, Scope, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { REQUEST } from '@nestjs/core';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 import { MotoristaDocument } from './schemas/motorista.schema';
-import { AnuncianteDocument } from './schemas/anunciante.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         @Inject('MOTORISTA_MODEL') private motoristaModel: Model<MotoristaDocument>,
-        @Inject('ANUNCIANTE_MODEL') private anuncianteModel: Model<AnuncianteDocument>,
+        private readonly cloudinaryService: CloudinaryService,
     ) { }
 
-    /** Método auxiliar para escolher o model pelo role do JWT */
-    private getModelByRoleFromUser(user: any): Model<any> {
-        console.log('User role:', user.role);
-        switch (user.role) {
+    /** Método auxiliar para escolher o model pelo role do Id */
+    private async getModelByRoleFromUser(idUser: string): Promise<Model<any>> {
+
+        const userRole = await this.getUserRoleFromId(idUser);
+
+        if (!userRole) {
+            throw new NotFoundException('Usuário não encontrado');
+        }
+
+        switch (userRole) {
             case UserRole.MOTORISTA:
                 return this.motoristaModel;
-            case UserRole.ANUNCIANTE:
-                return this.anuncianteModel;
             default:
                 return this.userModel;
         }
@@ -34,7 +38,7 @@ export class UsersService {
 
         // Verifica se o email já existe
         if (await this.userModel.findOne({ email: dto.email })) {
-            throw new Error('Email já cadastrado');
+            throw new ConflictException('Email já cadastrado');
         }
 
         const hashed = await bcrypt.hash(dto.password, 10);
@@ -44,9 +48,6 @@ export class UsersService {
             case UserRole.MOTORISTA:
                 created = new this.motoristaModel({ ...dto, password: hashed });
                 break;
-            case UserRole.ANUNCIANTE:
-                created = new this.anuncianteModel({ ...dto, password: hashed });
-                break;
             default:
                 created = new this.userModel({ ...dto, password: hashed });
                 break;
@@ -55,35 +56,48 @@ export class UsersService {
         return created.save();
     }
 
-    /** Atualiza dados do usuário atual com base no JWT */
-    async updateCurrentUser(updateData: UpdateUserDto, user: any) {
-        const model = this.getModelByRoleFromUser(user);
+    /** Atualiza dados do usuário atual com base no userId */
+    async updateCurrentUser(updateData: UpdateUserDto, idUser: string, file?: Express.Multer.File) {
+        const model = await this.getModelByRoleFromUser(idUser);
 
-        console.log('User:', user);
+        if (file) {
+            const url = await this.cloudinaryService.uploadImage(file, 'users_avatar');
+            console.log('URL da imagem enviada para o Cloudinary:', url);
+            updateData.avatar = url.secure_url;
+        }
+
 
         // Atualiza e retorna o documento atualizado do Mongoose
         const updatedUser = await model.findByIdAndUpdate(
-            user.userId,
+            idUser,
             { $set: updateData },
             { new: true, runValidators: true }
         );
 
-        if (!updatedUser) throw new Error('Usuário não encontrado');
+        if (!updatedUser) throw new NotFoundException('Usuário não encontrado');
 
-        return updatedUser; // aqui é a instância do model correto
+        return updatedUser;
     }
 
 
     /** Atualiza rating de qualquer usuário */
     async updateRating(userId: string, newAvg: number, totalReviews: number) {
-        return this.userModel.findByIdAndUpdate(
+        const user = await this.userModel.findByIdAndUpdate(
             userId,
             { avgRating: newAvg, totalReviews },
             { new: true },
         );
+
+        if (!user) throw new NotFoundException('Usuário não encontrado');
+
+        return user;
     }
 
     async incrementProfileView(userId: string) {
+
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new NotFoundException('Usuário não encontrado');
+
         return this.userModel.findByIdAndUpdate(
             userId,
             { $inc: { profileViews: 1 } },
@@ -96,13 +110,13 @@ export class UsersService {
     }
 
 
-    async findAllAnunciantes() {
-        return this.anuncianteModel.find().lean();
-    }
+    // async findAllAnunciantes() {
+    //     return this.anuncianteModel.find().lean().exec();
+    // }
 
     async mudarStatusMotorista(id: string, status: string) {
         const motorista = await this.motoristaModel.findById(id);
-        if (!motorista) throw new Error('Motorista não encontrado');
+        if (!motorista) throw new NotFoundException('Motorista não encontrado');
 
         motorista.status = status;
         return motorista.save();
@@ -110,11 +124,28 @@ export class UsersService {
 
 
     async findByEmail(email: string) {
-        return this.userModel.findOne({ email }).lean();
+        const user = await this.userModel.findOne({ email }).lean();
+        return user;
     }
 
+    /** Encontrar usuario por ID com dados basicos */
     async findById(id: string) {
-        return this.userModel.findById(id).lean();
+        const user = await this.userModel.findById(id).lean();
+        return user;
+    }
+
+    /** Encontrar usuario por ID, dados completo */
+    async findByIdComplete(id: string) {
+        const model = await this.getModelByRoleFromUser(id);
+        const userReturn = await model.findById(id).lean();
+
+        if (!userReturn) throw new NotFoundException('Usuário não encontrado');
+
+        if (model === this.motoristaModel) {
+            await this.incrementProfileView(id);
+        }
+
+        return userReturn;
     }
 
     /** Deleta todos os usuários */
@@ -129,5 +160,20 @@ export class UsersService {
             .sort({ profileViews: -1 })
             .limit(limit)
             .lean();
+    }
+
+    /** Pega o role do usuário pelo ID */
+    private async getUserRoleFromId(userId: string): Promise<UserRole> {
+        const user = await this.userModel.findById(userId).lean();
+        if (!user) throw new NotFoundException('Usuário não encontrado');
+        return user.role;
+    }
+
+    async findAllUsers() {
+        return this.userModel.find().lean().exec();
+    }
+
+    async getUserCount() {
+        return this.userModel.countDocuments();
     }
 }

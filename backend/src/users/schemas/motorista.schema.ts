@@ -16,7 +16,7 @@ export class Motorista extends User {
   @Prop({ required: true })
   destination: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   description: string;
 
   @Prop({ required: true })

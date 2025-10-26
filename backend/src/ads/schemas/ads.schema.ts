@@ -24,11 +24,11 @@ export class Ads {
     @Prop({ required: true })
     numberPhone: string;
 
-    @Prop()
+    @Prop({ required: true })
     description: string;
 
     @Prop({ required: true })
-    urlImage: string;
+    image: string;
 
     @Prop({ required: true, enum: AdsCategory })
     category: AdsCategory;
@@ -39,8 +39,8 @@ export class Ads {
     @Prop({ default: true })
     isActive: boolean;
 
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-    userId: Types.ObjectId; // anunciante 
+    @Prop({ required: true })
+    userId: string; // anunciante 
 
 }
 

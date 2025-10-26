@@ -1,8 +1,10 @@
-import { Controller, Delete, Get, Param, Patch, Put, Body, Req } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Put, Body, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { get } from 'mongoose';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
+
 
 
 
@@ -18,17 +20,23 @@ export class UsersController {
         return this.usersService.findAllMotoristas();
     }
 
+    @Get()
+    @ApiOperation({ summary: 'Retorna todos os usuários' })
+    async getAllUsers() {
+        return this.usersService.findAllUsers();
+    }
+
+    @Get('count')
+    @ApiOperation({ summary: 'Retorna a contagem total de usuários' })
+    async getUserCount() {
+        return this.usersService.getUserCount();
+    }
+
     @Get('motoristas/profile-views/top')
     @ApiOperation({ summary: 'Retorna os motoristas com mais visualizações de perfil' })
     async getTopMotoristasByProfileViews() {
         return this.usersService.getTopMotoristasByProfileViews();
-    }    
-
-    @Put()
-    @ApiOperation({ summary: 'Atualiza os dados do usuário autenticado' })
-    updateMe(@Body() dto: UpdateUserDto, @Req() req: any) {
-        return this.usersService.updateCurrentUser(dto, req.user);
-    }
+    }  
     
     @Delete()
     @ApiOperation({ summary: 'Deletar todos os usuários, só pra teste tmj' })
@@ -45,13 +53,14 @@ export class UsersController {
     @Get(':id')
     @ApiOperation({ summary: 'Retorna o perfil de um usuário pelo ID, e se for motorista adiciona 1 visualização' })
     async getProfile(@Param('id') id: string) {
-        const user = await this.usersService.findById(id);
-
-        // Toda vez que um perfil de motorista for acessado, add 1 click nele
-        if (user?.role.includes('motorista')) {
-            await this.usersService.incrementProfileView(id);
-        }
-
+        const user = await this.usersService.findByIdComplete(id);
         return user;
+    }
+
+    @Put(':id')
+    @ApiOperation({ summary: 'Atualiza os dados do usuário' })
+    @UseInterceptors(FileInterceptor('avatar'))
+    updateMe(@Body() dto: UpdateUserDto, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File,) {
+        return this.usersService.updateCurrentUser(dto, id, file);
     }
 }

@@ -3,6 +3,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AdsCategory } from '../schemas/ads.schema';
 
 export class CreateAdsDto {
+
+
   @ApiProperty({ example: 'Supermercado São João', description: 'Nome da empresa anunciante' })
   @IsString({ message: 'O nome da empresa deve ser uma string' })
   @IsNotEmpty({ message: 'O nome da empresa é obrigatório' })
@@ -18,10 +20,9 @@ export class CreateAdsDto {
   @IsString({ message: 'A descrição deve ser uma string' })
   description?: string;
 
-  @ApiProperty({ example: 'https://exemplo.com/imagem.jpg', description: 'URL da imagem do anúncio' })
-  @IsUrl({}, { message: 'A URL da imagem deve ser válida' })
-  @IsNotEmpty({ message: 'A URL da imagem é obrigatória' })
-  urlImage: string;
+  @ApiProperty({ example: 'https://exemplo.com/imagem.jpg', description: 'URL da imagem do anúncio' })  
+  @IsOptional()  
+  image: string;
 
   @ApiProperty({ enum: AdsCategory, example: AdsCategory.ALIMENTACAO, description: 'Categoria do anúncio' })
   @IsEnum(AdsCategory, { message: 'Categoria inválida' })
@@ -32,4 +33,5 @@ export class CreateAdsDto {
   @IsOptional()
   @IsBoolean({ message: 'O isActive deve ser booleano' })
   isActive?: boolean;
+
 }
