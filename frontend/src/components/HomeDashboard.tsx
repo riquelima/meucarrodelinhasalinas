@@ -77,7 +77,7 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
           <div className="text-center py-6 lg:py-8">
             <h1 className="text-foreground mb-3 text-2xl lg:text-3xl">Seu Carro de Linha, na Palma da Mão</h1>
             <p className="text-muted-foreground text-sm lg:text-base max-w-2xl mx-auto px-4">
-              Em Salinas, táxi sempre foi carro de linha. Agora, com o nosso app, ficou muito mais rápido e prático chamar o seu.
+              Em nossa região, táxi sempre foi carro de linha. Agora, com o nosso app, ficou muito mais rápido e prático chamar o seu.
             </p>
           </div>
 
@@ -87,7 +87,7 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               placeholder="Buscar rota ou motorista..."
-              className="pl-12 h-12 bg-input-background text-base border-border shadow-sm"
+              className="pl-12 h-16 bg-input-background text-base border-border shadow-sm"
             />
           </div>
         </div>
