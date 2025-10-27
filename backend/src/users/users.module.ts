@@ -6,11 +6,12 @@ import { UsersController } from './users.controller';
 import { MotoristaSchema } from './schemas/motorista.schema';
 import mongoose from 'mongoose';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-    
+    EmailModule
   ],
   controllers: [UsersController],
   providers: [

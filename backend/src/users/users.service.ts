@@ -7,6 +7,7 @@ import { User, UserDocument, UserRole } from './schemas/user.schema';
 import { MotoristaDocument } from './schemas/motorista.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class UsersService {
@@ -14,6 +15,7 @@ export class UsersService {
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         @Inject('MOTORISTA_MODEL') private motoristaModel: Model<MotoristaDocument>,
         private readonly cloudinaryService: CloudinaryService,
+        private readonly emailService: EmailService,
     ) { }
 
     /** Método auxiliar para escolher o model pelo role do Id */
@@ -52,6 +54,8 @@ export class UsersService {
                 created = new this.userModel({ ...dto, password: hashed });
                 break;
         }
+
+        await this.emailService.sendWelcomeEmail(created.email, created.name);
 
         return created.save();
     }
@@ -194,5 +198,13 @@ export class UsersService {
 
     async getUserCount() {
         return this.userModel.countDocuments();
+    }
+
+    async updatePassword(userId: string, hashedPassword: string) {
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new NotFoundException('Usuário não encontrado');
+
+        user.password = hashedPassword;
+        return user.save();
     }
 }
