@@ -40,21 +40,35 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
         );
       }
 
-      // data.access_token é o JWT retornado pelo backend
       const token = data.access_token;
       if (!token) throw new Error("Token não recebido");
 
-      // data.user.role contém o papel do usuário
-      const role = data.user?.role || "passageiro";
+      const parseJwt = (token: string) => {
+        try {
+          const base64 = token.split('.')[1];
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          return JSON.parse(jsonPayload);
+        } catch {
+          return null;
+        }
+      };
 
-      // Mapear roles do backend para frontend
-      const mappedRole =
-        role === "motorista" ? "driver" :
-        role === "passageiro" ? "passenger" :
-        role === "anunciante" ? "advertiser" :
-        "admin";
+      const payload = parseJwt(token);
+      let mappedRole: "driver" | "passenger" | "advertiser" | "admin" = "passenger";
 
-      // Chamar handler do App
+      if (payload?.role) {
+        const role = payload.role.toLowerCase();
+        mappedRole =
+          role === "motorista" ? "driver" :
+          role === "passageiro" ? "passenger" :
+          role === "anunciante" ? "advertiser" :
+          "admin";
+      }
       onLogin(mappedRole, token);
     } catch (err: any) {
       setFormError(err.message);

@@ -17,6 +17,7 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { RideCalculatorScreen } from './components/RideCalculatorScreen';
 
 import SignupSuccessPage  from './sucess';
+import Loading from './loading';
 
 type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
 type Screen =
@@ -125,11 +126,7 @@ export default function App() {
   const handleNavigate = (screen: string) => setCurrentScreen(screen as Screen);
 
   if (isLoadingUser) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
+    return <Loading />;
   }
 
   // Telas públicas
