@@ -16,10 +16,13 @@ import { ChatScreen } from './components/ChatScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { RideCalculatorScreen } from './components/RideCalculatorScreen';
 
+import SignupSuccessPage  from './sucess';
+
 type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
 type Screen =
   | 'login'
   | 'signup'
+  | 'signup-success'
   | 'forgot-password'
   | 'dashboard'
   | 'search'
@@ -132,6 +135,15 @@ export default function App() {
   // Telas públicas
   if (currentScreen === 'login') return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
   if (currentScreen === 'signup') return <SignupScreen onNavigate={handleNavigate} />;
+
+  if (currentScreen === 'signup-success') {
+    return (
+      <SignupSuccessPage
+        onLogin={() => setCurrentScreen('login')}
+      />
+    );
+  }
+  
   if (currentScreen === 'forgot-password') return <ForgotPasswordScreen onNavigate={handleNavigate} />;
 
   if (!userType) return null;
