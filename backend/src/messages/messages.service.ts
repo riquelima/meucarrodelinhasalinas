@@ -48,24 +48,108 @@ export class MessageService {
 
     // mensagens entre dois usuários (paginação simples)
     async getMessagesBetween(userA: string, userB: string, limit = 50) {
-    const userAId = new Types.ObjectId(userA);
-    const userBId = new Types.ObjectId(userB);
+        const userAId = new Types.ObjectId(userA);
+        const userBId = new Types.ObjectId(userB);
 
-    return this.messageModel
-        .find({
-            $or: [
-                { from: userAId, to: userBId },
-                { from: userBId, to: userAId },
-            ],
-        })
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .populate('from', 'name') 
-        .populate('to', 'name')   
-        .lean()
-        .exec();
+        // COLOCAR MARCAÇÃO DE LIDO AQUI
+        await this.messageModel.updateMany(
+            { from: userBId, to: userAId, isRead: false },
+            { $set: { isRead: true } }
+        );
+
+        return this.messageModel
+            .find({
+                $or: [
+                    { from: userAId, to: userBId },
+                    { from: userBId, to: userAId },
+                ],
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .populate('from', 'name')
+            .populate('to', 'name')
+            .lean()
+            .exec();
+    }
+
+    async getUserConversations(userId: string) {
+        console.log("Getting conversations for user:", userId);
+        const objectId = new Types.ObjectId(userId);
+
+        // Agrupando mensagens por usuário de destino/remetente
+        const conversations = await this.messageModel.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { from: objectId },
+                        { to: objectId }
+                    ]
+                }
+            },
+            {
+                $sort: { createdAt: -1 }
+            },
+            {
+                $project: {
+                    from: 1,
+                    to: 1,
+                    content: 1,
+                    createdAt: 1,
+                    isRead: 1,
+                    otherUserId: {
+                        $cond: [{ $eq: ['$from', objectId] }, '$to', '$from']
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$otherUserId',
+                    lastMessage: { $first: '$content' },
+                    lastTime: { $first: '$createdAt' },
+                    unreadCount: {
+                        $sum: {
+                            $cond: [
+                                { $and: [{ $eq: ['$to', objectId] }, { $eq: ['$isRead', false] }] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            {
+                $unwind: '$user'
+            },
+            {
+                $project: {
+                    id: '$_id',
+                    name: '$user.name',
+                    photo: '$user.avatar',
+                    role: '$user.role',
+                    lastMessage: 1,
+                    time: '$lastTime',
+                    unread: '$unreadCount'
+                }
+            },
+            {
+                $sort: { time: -1 }
+            }
+        ]);
+
+        return conversations;
+    }
+
+    async getAllMessages() {
+        return this.messageModel.find().exec();
+    }
+
 }
 
-
-
-}
