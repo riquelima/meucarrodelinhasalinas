@@ -16,6 +16,9 @@ export class Message {
 
   @Prop({ default: false })
   isRead: boolean;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);
