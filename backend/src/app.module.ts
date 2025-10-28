@@ -4,11 +4,13 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { RoutesModule } from './routes/routes.module';
+//import { RoutesModule } from './routes/routes.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { MessageModule } from './messages/messages.module';
 import { AdsModule } from './ads/ads.module';
 import { BlogModule } from './blog/blog.module';
+import { EmailModule } from './email/email.module';
+
 
 @Module({
   imports: [
@@ -22,7 +24,8 @@ import { BlogModule } from './blog/blog.module';
     ReviewsModule,
     MessageModule,
     AdsModule, 
-    BlogModule, //FALTA IMPLEMENTAR
+    BlogModule, 
+    EmailModule,
   ],
 })
 export class AppModule {}
