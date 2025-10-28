@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import { LoginScreen } from './components/LoginScreen';
 import { SignupScreen } from './components/SignupScreen';
 import { ForgotPasswordScreen } from './components/ForgotPasswordScreen';
@@ -16,19 +17,38 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { RideCalculatorScreen } from './components/RideCalculatorScreen';
 
 type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
-type Screen = 'login' | 'signup' | 'forgot-password' | 'dashboard' | 'search' | 'chat' | 'profile' | 'blog' | 'calculator';
+type Screen =
+  | 'login'
+  | 'signup'
+  | 'forgot-password'
+  | 'dashboard'
+  | 'search'
+  | 'chat'
+  | 'profile'
+  | 'blog'
+  | 'calculator';
 type Theme = 'light' | 'dark';
+
+interface JwtPayload {
+  role: 'passageiro' | 'motorista' | 'anunciante' | 'admin';
+  name?: string;
+  email?: string;
+  [key: string]: any;
+}
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
   const [userType, setUserType] = useState<UserType>(null);
+  const [user, setUser] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
     return savedTheme || 'dark';
   });
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
 
+  // Tema
   useEffect(() => {
     localStorage.setItem('theme', theme);
     if (theme === 'dark') {
@@ -38,52 +58,95 @@ export default function App() {
     }
   }, [theme]);
 
-  const handleLogin = (type: 'passenger' | 'driver' | 'advertiser' | 'admin') => {
+  // Carregar usuário do token JWT
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setIsLoadingUser(false);
+      return;
+    }
+
+    try {
+      const decoded: JwtPayload = jwtDecode(token);
+
+      let type: UserType = null;
+      if (decoded.role === 'motorista') type = 'driver';
+      else if (decoded.role === 'passageiro') type = 'passenger';
+      else if (decoded.role === 'anunciante') type = 'advertiser';
+      else if (decoded.role === 'admin') type = 'admin';
+
+      setUserType(type);
+      setUser(decoded);
+      setCurrentScreen('dashboard');
+    } catch (err) {
+      console.error('Token inválido:', err);
+      localStorage.removeItem('token');
+      setUserType(null);
+      setUser(null);
+      setCurrentScreen('login');
+    } finally {
+      setIsLoadingUser(false);
+    }
+  }, []);
+
+  // Login
+  const handleLogin = (type: 'passenger' | 'driver' | 'advertiser' | 'admin', token?: string) => {
+    if (token) localStorage.setItem('token', token);
     setUserType(type);
+    if (token) {
+      try {
+        const decoded: JwtPayload = jwtDecode(token);
+        setUser(decoded);
+      } catch {
+        setUser(null);
+      }
+    }
     setCurrentScreen('dashboard');
   };
 
+  // Signup
   const handleSignup = (type: 'passenger' | 'driver' | 'advertiser' | 'admin') => {
     setUserType(type);
     setCurrentScreen('dashboard');
     setShowWelcome(true);
   };
 
+  // Logout
   const handleLogout = () => {
+    localStorage.removeItem('token');
     setUserType(null);
+    setUser(null);
     setCurrentScreen('login');
   };
 
-  const handleNavigate = (screen: string) => {
-    setCurrentScreen(screen as Screen);
-  };
+  const handleNavigate = (screen: string) => setCurrentScreen(screen as Screen);
 
-  // Render authentication screens
-  if (currentScreen === 'login') {
-    return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
+  if (isLoadingUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
   }
 
-  if (currentScreen === 'signup') {
-    return <SignupScreen onNavigate={handleNavigate} onSignup={handleSignup} />;
-  }
+  // Telas públicas
+  if (currentScreen === 'login') return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
+  if (currentScreen === 'signup') return <SignupScreen onNavigate={handleNavigate} />;
+  if (currentScreen === 'forgot-password') return <ForgotPasswordScreen onNavigate={handleNavigate} />;
 
-  if (currentScreen === 'forgot-password') {
-    return <ForgotPasswordScreen onNavigate={handleNavigate} />;
-  }
-
-  // Render main app with sidebar
   if (!userType) return null;
 
+  // Telas privadas
   return (
     <div className="min-h-screen bg-background">
       {userType && (
-        <WelcomeDialog 
+        <WelcomeDialog
           isOpen={showWelcome}
           onClose={() => setShowWelcome(false)}
           userType={userType}
         />
       )}
-      <Header 
+      <Header
         onMenuClick={() => setIsMenuOpen(!isMenuOpen)}
         isMenuOpen={isMenuOpen}
         unreadMessages={getUnreadMessages()}
@@ -99,21 +162,13 @@ export default function App() {
         setIsOpen={setIsMenuOpen}
       />
       <div className="w-full">
-        {currentScreen === 'dashboard' && userType === 'admin' && (
-          <AdminDashboard />
-        )}
+        {currentScreen === 'dashboard' && userType === 'admin' && <AdminDashboard />}
         {currentScreen === 'dashboard' && userType !== 'admin' && (
           <HomeDashboard onNavigate={handleNavigate} userType={userType} />
         )}
-        {currentScreen === 'search' && userType === 'passenger' && (
-          <PassengerDashboard onNavigate={handleNavigate} />
-        )}
-        {currentScreen === 'search' && userType === 'driver' && (
-          <DriverDashboard onNavigate={handleNavigate} />
-        )}
-        {currentScreen === 'search' && userType === 'advertiser' && (
-          <AdvertiserDashboard onNavigate={handleNavigate} />
-        )}
+        {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} />}
+        {currentScreen === 'search' && userType === 'driver' && <DriverDashboard onNavigate={handleNavigate} />}
+        {currentScreen === 'search' && userType === 'advertiser' && <AdvertiserDashboard onNavigate={handleNavigate} />}
         {currentScreen === 'blog' && <BlogScreen />}
         {currentScreen === 'chat' && userType !== 'admin' && <ChatScreen userType={userType} />}
         {currentScreen === 'calculator' && <RideCalculatorScreen userType={userType} />}

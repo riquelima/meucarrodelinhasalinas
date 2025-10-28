@@ -71,7 +71,9 @@ export function SignupScreen({ onNavigate }: SignupScreenProps) {
       if (!response.ok) throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message || 'Erro ao cadastrar');
 
       setFormError(null);
+      // Redireciona para a tela de login
       onNavigate('login');
+
     } catch (err: any) {
       setFormError(err.message);
     } finally {
