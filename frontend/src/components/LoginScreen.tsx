@@ -9,7 +9,7 @@ import Loading from "../loading";
 
 interface LoginScreenProps {
   onNavigate: (screen: string) => void;
-  onLogin: (userType: 'passenger' | 'driver' | 'advertiser' | 'admin') => void;
+  onLogin: (userType: 'passenger' | 'driver' | 'advertiser' | 'admin', token: string) => void;
 }
 
 export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
@@ -40,10 +40,22 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
         );
       }
 
-      localStorage.setItem("token", data.access_token);
+      // data.access_token é o JWT retornado pelo backend
+      const token = data.access_token;
+      if (!token) throw new Error("Token não recebido");
 
-      const role = data.user?.role || "passenger";
-      onLogin(role);
+      // data.user.role contém o papel do usuário
+      const role = data.user?.role || "passageiro";
+
+      // Mapear roles do backend para frontend
+      const mappedRole =
+        role === "motorista" ? "driver" :
+        role === "passageiro" ? "passenger" :
+        role === "anunciante" ? "advertiser" :
+        "admin";
+
+      // Chamar handler do App
+      onLogin(mappedRole, token);
     } catch (err: any) {
       setFormError(err.message);
     } finally {
@@ -78,9 +90,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
         <CardContent className="p-6 pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm">
-                E-mail
-              </Label>
+              <Label htmlFor="email" className="text-sm">E-mail</Label>
               <Input
                 id="email"
                 type="email"
@@ -93,9 +103,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm">
-                Senha
-              </Label>
+              <Label htmlFor="password" className="text-sm">Senha</Label>
               <Input
                 id="password"
                 type="password"
