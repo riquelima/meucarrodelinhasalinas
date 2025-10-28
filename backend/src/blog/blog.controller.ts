@@ -3,6 +3,7 @@ import {
     Controller,
     Get,
     Param,
+    Patch,
     Post,
     Put,
     UploadedFile,
@@ -62,5 +63,11 @@ export class BlogController {
         @Body() updateBlogDto: UpdateBlogDto,
     ) {
         return this.blogService.update(id, updateBlogDto, file);
+    }
+
+    @Patch(':id')
+    async updateViews(@Param('id') id: string){
+        return this.blogService.updateViews(id);
+
     }
 }

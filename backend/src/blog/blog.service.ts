@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Blog } from './schemas/blog.schema';
+import { User, UserDocument } from 'src/users/schemas/user.schema';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
@@ -10,6 +11,7 @@ import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 export class BlogService {
   constructor(
     @InjectModel(Blog.name) private readonly blogModel: Model<Blog>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly cloudinaryService: CloudinaryService,
   ) { }
 
@@ -44,7 +46,24 @@ export class BlogService {
   }
 
   async findAll() {
-    return this.blogModel.find().sort({ createdAt: -1 }).exec();
+    const blogs = await this.blogModel.find().sort({ createdAt: -1 }).lean().exec();
+
+    if (!blogs || blogs.length === 0) return [];
+
+    
+    const authorIds = Array.from(new Set(blogs.map((b: any) => String(b.authorId))));
+    const users = await this.userModel.find({ _id: { $in: authorIds } }).select('name').lean().exec();
+    const usersById = new Map(users.map((u: any) => [String(u._id), u.name]));
+
+    // Retorna blogs substituindo authorId por authorName
+    return blogs.map((b: any) => {
+      const authorName = usersById.get(String(b.authorId)) || null;
+      const { authorId, ...rest } = b;
+      return {
+        ...rest,
+        authorName,
+      };
+    });
   }
 
   async findOne(id: string) {
@@ -78,6 +97,30 @@ export class BlogService {
   }
 
   async findHomeBlogs() {
-    return this.blogModel.find().sort({ createdAt: -1 }).limit(3).exec();
+    const blogs = await this.blogModel.find().sort({ createdAt: -1 }).limit(3).lean().exec();
+    if (!blogs || blogs.length === 0) return [];
+
+    const authorIds = Array.from(new Set(blogs.map((b: any) => String(b.authorId))));
+    const users = await this.userModel.find({ _id: { $in: authorIds } }).select('name').lean().exec();
+    const usersById = new Map(users.map((u: any) => [String(u._id), u.name]));
+
+    return blogs.map((b: any) => {
+      const authorName = usersById.get(String(b.authorId)) || null;
+      const { authorId, ...rest } = b;
+      return {
+        ...rest,
+        authorName,
+      };
+    });
+  }
+
+  async updateViews(id: string) {
+    const updated = await this.blogModel
+      .findByIdAndUpdate(id, { $inc: { views: 1 } }, { new: true })
+      .exec();
+
+    if (!updated) throw new NotFoundException('Blog não encontrado');
+
+    return updated;
   }
 }
