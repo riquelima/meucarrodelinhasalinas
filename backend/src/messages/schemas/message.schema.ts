@@ -13,6 +13,12 @@ export class Message {
 
   @Prop({ required: true })
   content: string;
+
+  @Prop({ default: false })
+  isRead: boolean;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

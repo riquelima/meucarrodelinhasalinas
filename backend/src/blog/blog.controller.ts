@@ -50,9 +50,8 @@ export class BlogController {
 
     @Get('count/all')
     @ApiOperation({ summary: 'Retorna a contagem total de blogs, pra tela de admin' })
-    async countAll() {
-        const count = await this.blogService.countAll();
-        return { total: count };
+    async countAll() {         
+        return await this.blogService.countAll();
     }
 
     @Put(':id')

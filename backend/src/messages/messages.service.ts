@@ -3,11 +3,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Message, MessageDocument } from './schemas/message.schema';
 import { UsersService } from '../users/users.service'; // ajuste path se necessário
+import { User, UserDocument } from '../users/schemas/user.schema';
 
 @Injectable()
 export class MessageService {
     constructor(
         @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
+        @InjectModel(User.name) private userModel: Model<UserDocument>,
         private usersService: UsersService,
     ) { }
 
@@ -48,24 +50,104 @@ export class MessageService {
 
     // mensagens entre dois usuários (paginação simples)
     async getMessagesBetween(userA: string, userB: string, limit = 50) {
-    const userAId = new Types.ObjectId(userA);
-    const userBId = new Types.ObjectId(userB);
+        const userAId = new Types.ObjectId(userA);
+        const userBId = new Types.ObjectId(userB);
 
-    return this.messageModel
-        .find({
-            $or: [
-                { from: userAId, to: userBId },
-                { from: userBId, to: userAId },
-            ],
-        })
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .populate('from', 'name') 
-        .populate('to', 'name')   
-        .lean()
-        .exec();
+        // COLOCAR MARCAÇÃO DE LIDO AQUI
+        await this.messageModel.updateMany(
+            { from: userBId, to: userAId, isRead: false },
+            { $set: { isRead: true } }
+        );
+
+        return this.messageModel
+            .find({
+                $or: [
+                    { from: userAId, to: userBId },
+                    { from: userBId, to: userAId },
+                ],
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .populate('from', 'name')
+            .populate('to', 'name')
+            .lean()
+            .exec();
+    }
+
+    async getUserConversations(userId: string) {
+        const objectId = new Types.ObjectId(userId);
+
+        // 1️⃣ Buscar todas as mensagens onde o usuário é from ou to
+        const messages = await this.messageModel
+            .find({
+                $or: [{ from: objectId }, { to: objectId }],
+            })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        if (!messages.length) return [];
+
+        // 2️⃣ Pegar os IDs únicos dos contatos (quem não é o próprio usuário)
+        // transformar todos os IDs em string para comparar e buscar
+        const contactIdsStr = [
+            ...new Set(
+                messages.map(m =>
+                    m.from.toString() === userId ? m.to.toString() : m.from.toString(),
+                ),
+            ),
+        ];
+
+        const contacts = await this.userModel
+            .find({ _id: { $in: contactIdsStr } })
+            .select('name avatar')
+            .lean();
+
+        console.log('Contacts found:', contacts);
+
+        // 4️⃣ Montar lista de conversas
+        const conversations = contactIdsStr.map(contactId => {
+            const lastMessage = messages.find(
+                m =>
+                    m.from.toString() === contactId.toString() ||
+                    m.to.toString() === contactId.toString(),
+            );
+
+            const user = contacts.find(c => c._id.toString() === contactId.toString());
+
+
+            return {
+                id: contactId.toString(),
+                name: user?.name || 'Usuário',
+                lastMessage: lastMessage?.content || '',
+                time: lastMessage?.createdAt
+                    ? this.formatTime(lastMessage.createdAt)
+                    : '',
+                unread: 0, // por enquanto fixo (pode contar mensagens não lidas depois)
+                photo:
+                    user?.avatar ||
+                    'https://via.placeholder.com/150x150.png?text=Sem+Foto',
+                status: 'offline', // podemos integrar com socket depois
+            };
+        });
+
+        return conversations;
+    }
+
+    private formatTime(date: Date) {
+        const diffMs = Date.now() - new Date(date).getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return 'Hoje';
+        if (diffDays === 1) return 'Ontem';
+        return `${diffDays} dias atrás`;
+    }
+
+    async getAllMessages() {
+        return this.messageModel.find().exec();
+    }
 }
 
 
 
-}
+
+
