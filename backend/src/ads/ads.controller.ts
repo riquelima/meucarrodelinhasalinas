@@ -10,6 +10,7 @@ import {
   Query,
   UseInterceptors,
   UploadedFile,
+  Delete,
 } from '@nestjs/common';
 import { AdsService } from './ads.service';
 import { CreateAdsDto } from './dto/create-ads.dto';
@@ -22,7 +23,7 @@ import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/fi
 @ApiBearerAuth()
 @Controller('ads')
 export class AdsController {
-  constructor(private readonly adsService: AdsService) {}
+  constructor(private readonly adsService: AdsService) { }
 
   @ApiOperation({ summary: 'Retorna anúncios ativos aleatórios para telas em geral' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 5 })
@@ -43,15 +44,15 @@ export class AdsController {
     return this.adsService.getAdsCount();
   }
 
-  
-  @ApiOperation({ summary: 'Cria um novo anúncio' })  
+
+  @ApiOperation({ summary: 'Cria um novo anúncio' })
   @Post(':userId/anuncios')
   @UseInterceptors(FileInterceptor('image'))
   async create(@Param('userId') userId: string, @Body() dto: CreateAdsDto, @UploadedFile() file: Express.Multer.File) {
     return this.adsService.create(dto, userId, file);
   }
-  
-  @ApiOperation({ summary: 'Retorna todos os anúncios do usuário autenticado' })  
+
+  @ApiOperation({ summary: 'Retorna todos os anúncios do usuário autenticado' })
   @Get(':id/my')
   async getUserAds(@Req() req) {
     return this.adsService.getUserAds(req.user.sub);
@@ -62,7 +63,7 @@ export class AdsController {
   async getUserKpis(@Param('userId') userId: string) {
     return this.adsService.getUserKpis(userId);
   }
-  
+
   @ApiOperation({ summary: 'Atualiza dados de um anúncio (editar, ativar, pausar)' })
   @ApiParam({ name: 'id', type: String })
   @UseInterceptors(FileInterceptor('image'))
@@ -71,5 +72,11 @@ export class AdsController {
     return this.adsService.updateAd(id, dto, file);
   }
 
-  
+  @Delete(':id')
+  async deleteById(@Param('id') id: string) {
+    
+    return this.adsService.deleteById(id);
+  }
+
+
 }

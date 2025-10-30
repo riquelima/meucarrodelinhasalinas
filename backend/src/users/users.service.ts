@@ -207,4 +207,14 @@ export class UsersService {
         user.password = hashedPassword;
         return user.save();
     }
+
+    async deleteById(id: string) {
+        const deleted = await this.userModel.findByIdAndDelete(id).exec();
+        
+        if (!deleted) {
+          throw new NotFoundException('Usuario não encontrado');
+        }
+    
+        return { message: 'Usuario deletado com sucesso' };
+      }
 }

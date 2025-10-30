@@ -63,4 +63,9 @@ export class UsersController {
     updateMe(@Body() dto: UpdateUserDto, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File,) {
         return this.usersService.updateCurrentUser(dto, id, file);
     }
+
+    @Delete(':id')
+    async deleteById(@Param('id') id: string){
+        return this.usersService.deleteById(id) 
+    }
 }
