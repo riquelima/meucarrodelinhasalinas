@@ -118,4 +118,14 @@ export class AdsService {
     async getAllAds() {
         return this.adsModel.find().lean();
     }
+
+    async deleteById(id: string) {
+    const deleted = await this.adsModel.findByIdAndDelete(id).exec();
+    
+    if (!deleted) {
+      throw new NotFoundException('Anuncio não encontrado');
+    }
+
+    return { message: 'Anuncio deletado com sucesso' };
+  }
 }

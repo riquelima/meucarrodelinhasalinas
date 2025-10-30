@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     Patch,
@@ -69,5 +70,10 @@ export class BlogController {
     async updateViews(@Param('id') id: string){
         return this.blogService.updateViews(id);
 
+    }
+
+    @Delete(':id')
+    async deleteById(@Param('id') id: string){
+        return this.blogService.deleteById(id);
     }
 }

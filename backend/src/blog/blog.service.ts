@@ -123,4 +123,14 @@ export class BlogService {
 
     return updated;
   }
+
+  async deleteById(id: string) {
+    const deleted = await this.blogModel.findByIdAndDelete(id).exec();
+    
+    if (!deleted) {
+      throw new NotFoundException('Blog não encontrado');
+    }
+
+    return { message: 'Blog deletado com sucesso' };
+  }
 }
