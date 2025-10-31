@@ -3,11 +3,12 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Calendar, User, Search, TrendingUp } from "lucide-react";
+import { Calendar, User, Search, TrendingUp, InstagramIcon } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AdCarousel } from "./AdCarousel";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "./ui/carousel";
 import { useEffect, useState } from "react";
 
 export function BlogScreen() {
@@ -40,6 +41,7 @@ export function BlogScreen() {
         if (!res.ok) throw new Error("Erro ao buscar posts");
 
         const data = await res.json();
+        console.log(data)
         setPosts(data);
       } catch (err: any) {
         setError(err.message);
@@ -69,7 +71,6 @@ export function BlogScreen() {
 
     setFilteredPosts(filtered);
   }, [selectedCategory, searchTerm, posts]);
-
 
   if (loading) return <div className="text-center py-10">Carregando posts...</div>;
   if (error) return <div className="text-center text-red-500 py-10">{error}</div>;
@@ -140,12 +141,27 @@ export function BlogScreen() {
                   </div>
                   <div className="flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
-                    <span>{posts[0].views} visualizações</span>
+                    <span>{filteredPosts[0].views} visualizações</span>
                   </div>
                 </div>
                 <h2 className="text-foreground mb-2 text-lg lg:text-xl">{filteredPosts[0].title}</h2>
                 <p className="text-muted-foreground text-sm mb-4 line-clamp-4">{filteredPosts[0].content}</p>
-                <Button onClick={() => setSelectedPost(filteredPosts[0])} className="bg-blue-600 hover:bg-blue-700 h-9">Ler mais</Button>
+                <Button onClick={async () => {
+                  setSelectedPost(filteredPosts[0]); // abre o modal
+
+                  try {
+                    const token = localStorage.getItem("token");
+                    await fetch(`http://localhost:3000/blogs/${filteredPosts[0]._id}`, {
+                      method: "PATCH",
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                    });
+                  } catch (err) {
+                    console.error("Erro ao atualizar visualização:", err);
+                  }
+                }}
+                  className="bg-blue-600 hover:bg-blue-700 h-9">Ler mais</Button>
               </div>
             </div>
           </Card>
@@ -186,7 +202,21 @@ export function BlogScreen() {
                   variant="outline"
                   size="sm"
                   className="w-full h-8 text-xs sm:text-sm"
-                  onClick={() => setSelectedPost(post)}
+                  onClick={async () => {
+                    setSelectedPost(post);
+
+                    try {
+                      const token = localStorage.getItem("token");
+                      await fetch(`http://localhost:3000/blogs/${post._id}`, {
+                        method: "PATCH",
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                        },
+                      });
+                    } catch (err) {
+                      console.error("Erro ao atualizar visualização:", err);
+                    }
+                  }}
                 >
                   Ler mais
                 </Button>
@@ -201,15 +231,35 @@ export function BlogScreen() {
             {selectedPost && (
               <>
                 <DialogHeader>
-                  <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden mb-4 -mt-6">
-                    <ImageWithFallback
-                      src={selectedPost.image}
-                      alt={selectedPost.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <Badge className="absolute top-3 left-3 bg-blue-600 capitalize">{selectedPost.category}</Badge>
+                  {/* Carrossel de imagens da notícia */}
+                  <div className="w-full">
+                    <Carousel className="w-full" opts={{ loop: true, autoScroll: 3000 }}>
+                      <CarouselContent>
+                        {[selectedPost.image, selectedPost.image2, selectedPost.image3]
+                          .filter(Boolean)
+                          .map((img, index) => (
+                            <CarouselItem key={index}>
+                              <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden">
+                                <ImageWithFallback
+                                  src={img}
+                                  alt={`${selectedPost.title} - ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </CarouselItem>
+                          ))}
+                      </CarouselContent>
+                      <div className="hidden sm:block">
+                        <CarouselPrevious className="-left-4" />
+                        <CarouselNext className="-right-4" />
+                      </div>
+                    </Carousel>
                   </div>
-                  <DialogTitle className="text-foreground text-xl sm:text-2xl">{selectedPost.title}</DialogTitle>
+
+                  <DialogTitle className="text-foreground text-xl sm:text-2xl mt-4">
+                    {selectedPost.title}
+                  </DialogTitle>
+
                   <DialogDescription>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-2">
                       <div className="flex items-center gap-1">
@@ -227,17 +277,38 @@ export function BlogScreen() {
                     </div>
                   </DialogDescription>
                 </DialogHeader>
+
                 <div className="text-foreground text-sm sm:text-base leading-relaxed whitespace-pre-line mt-4">
                   {selectedPost.content}
                 </div>
+
+                <div className="mt-6 flex justify-center">
+                  {selectedPost.link && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(selectedPost.link, "_blank", "noopener,noreferrer");
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <InstagramIcon className="w-6 h-6 text-white" />
+                        <span>Comente sobre essa publicação</span>
+                      </div>
+
+
+                    </button>
+                  )}
+                </div>
+
               </>
             )}
           </DialogContent>
         </Dialog>
-      </div>
 
-      <Footer />
-      <ScrollToTop />
+        <Footer />
+        <ScrollToTop />
+      </div>
     </div>
   );
 }
