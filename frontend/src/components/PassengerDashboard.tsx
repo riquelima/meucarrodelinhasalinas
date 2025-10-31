@@ -55,26 +55,17 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
 
   // Filtrar motoristas
   useEffect(() => {
-    let filtered = drivers;
+    const filtered = drivers.filter(driver => {
+      const origin = driver.origin || "";
+      const destination = driver.destination || "";
+      const name = driver.name || "";
 
-    if (departureFilter.trim()) {
-      filtered = filtered.filter(driver =>
-        driver.origin?.toLowerCase().includes(departureFilter.toLowerCase())
-      );
-    }
+      if (departureFilter.trim() && !origin.toLowerCase().includes(departureFilter.toLowerCase())) return false;
+      if (destinationFilter.trim() && !destination.toLowerCase().includes(destinationFilter.toLowerCase())) return false;
+      if (searchTerm.trim() && !(name.toLowerCase().includes(searchTerm.toLowerCase()) || `${origin} → ${destination}`.toLowerCase().includes(searchTerm.toLowerCase()))) return false;
 
-    if (destinationFilter.trim()) {
-      filtered = filtered.filter(driver =>
-        driver.destination?.toLowerCase().includes(destinationFilter.toLowerCase())
-      );
-    }
-
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(driver =>
-        driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${driver.origin} → ${driver.destination}`.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+      return true;
+    });
 
     setFilteredDrivers(filtered);
   }, [searchTerm, departureFilter, destinationFilter, drivers]);
@@ -177,19 +168,19 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
                     {driver.avatar ? (
                       <ImageWithFallback
                         src={driver.avatar}
-                        alt={driver.name}
+                        alt={driver.name || "Motorista"}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <AvatarFallback className="bg-green-600 text-white">
-                        {driver.name.split(' ').map((n: any[]) => n[0]).join('')}
+                        {(driver.name || "M").split(' ').map((n: any[]) => n[0]).join('')}
                       </AvatarFallback>
                     )}
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-foreground text-base sm:text-lg truncate">{driver.name}</CardTitle>
+                        <CardTitle className="text-foreground text-base sm:text-lg truncate">{driver.name || "Motorista"}</CardTitle>
                         <CardDescription className="flex items-center gap-1 mt-1">
                           <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
                           <span className="text-xs sm:text-sm">{driver.avgRating || 0}</span>
@@ -213,15 +204,15 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
               <CardContent className="space-y-2 p-4 pt-0">
                 <div className="flex items-start gap-2">
                   <CarIcon className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground text-sm">{driver.vehicle} - {driver.licensePlate}</span>
+                  <span className="text-foreground text-sm">{driver.vehicle || "N/A"} - {driver.licensePlate || "N/A"}</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground text-sm">{driver.origin} → {driver.destination}</span>
+                  <span className="text-foreground text-sm">{driver.origin || "N/A"} → {driver.destination || "N/A"}</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground text-xs sm:text-sm">{driver.availableDays}</span>
+                  <span className="text-muted-foreground text-xs sm:text-sm">{driver.availableDays || "N/A"}</span>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
