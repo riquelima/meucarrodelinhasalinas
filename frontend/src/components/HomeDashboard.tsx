@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -9,7 +10,6 @@ import { AdCarousel } from "./AdCarousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
-import { useState } from "react";
 
 interface HomeDashboardProps {
   onNavigate: (screen: string) => void;
@@ -21,239 +21,286 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
   const [showTipsModal, setShowTipsModal] = useState(false);
   const [showStatusHelpModal, setShowStatusHelpModal] = useState(false);
 
-  const drivers = [
-    {
-      id: 1,
-      name: "Carlos Silva",
-      rating: 4.8,
-      trips: 234,
-      vehicle: "Honda Civic Prata",
-      licensePlate: "ABC-1234",
-      mainDeparture: "Centro",
-      mainDestination: "Bairro Alto",
-      route: "Centro → Bairro Alto",
-      schedule: "Segunda a Sexta, 7h - 8h",
-      description: "Motorista profissional há mais de 10 anos. Sempre pontual e com carro limpo e confortável.",
-      avatar: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjA1OTM3MjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "online",
-    },
-    {
-      id: 2,
-      name: "Maria Santos",
-      rating: 4.9,
-      trips: 189,
-      vehicle: "Toyota Corolla Branco",
-      licensePlate: "XYZ-5678",
-      mainDeparture: "Zona Sul",
-      mainDestination: "Centro",
-      route: "Zona Sul → Centro",
-      schedule: "Segunda a Sexta, 6h30 - 7h30",
-      description: "Adoro conversar e fazer novos amigos durante as viagens. Motorista cuidadosa e atenciosa.",
-      avatar: "https://images.unsplash.com/photo-1581065178047-8ee15951ede6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MDYxODgxMHww&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "online",
-    },
-    {
-      id: 3,
-      name: "João Oliveira",
-      rating: 4.7,
-      trips: 156,
-      vehicle: "Volkswagen Jetta Preto",
-      licensePlate: "DEF-9012",
-      mainDeparture: "Aeroporto",
-      mainDestination: "Centro",
-      route: "Aeroporto → Centro",
-      schedule: "Todos os dias, 5h - 22h",
-      description: "Disponível para viagens ao aeroporto e viagens longas. Flexível com horários.",
-      avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMG1hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc2MDY0NjI3MHww&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "offline",
-    },
-  ];
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
+
+  // Buscar motoristas do backend
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3000/users/motoristas/profile-views/top', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Erro ao buscar motoristas");
+        const data = await response.json();
+        setDrivers(data);
+        setFilteredDrivers(data);
+      } catch (err) {
+        console.error(err);
+        setDrivers([]);
+        setFilteredDrivers([]);
+      }
+    };
+    fetchDrivers();
+  }, []);
+
+  // Buscar blogs do backend
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3000/blogs/home', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        setBlogs(data);
+      } catch (err) {
+        console.error("Erro ao carregar blogs", err);
+        setBlogs([]);
+      }
+    };
+    fetchBlogs();
+  }, []);
+
+  // Filtrar motoristas por nome ou rota
+  useEffect(() => {
+    if (!searchTerm) return setFilteredDrivers(drivers);
+
+    const lowerSearch = searchTerm.toLowerCase();
+
+    const filtered = drivers.filter(driver =>
+      driver.name.toLowerCase().includes(lowerSearch) ||
+      `${driver.origin} → ${driver.destination}`.toLowerCase().includes(lowerSearch)
+    );
+
+    setFilteredDrivers(filtered);
+  }, [searchTerm, drivers]);
 
   return (
     <div className="pt-20">
       <div className="p-4 space-y-4 pb-8">
         {/* Hero Section */}
-        <div className="space-y-4">
-          <div className="text-center py-6 lg:py-8">
-            <h1 className="text-foreground mb-3 text-2xl lg:text-3xl">Seu Carro de Linha, na Palma da Mão</h1>
-            <p className="text-muted-foreground text-sm lg:text-base max-w-2xl mx-auto px-4">
-              Em nossa região, táxi sempre foi carro de linha. Agora, com o nosso app, ficou muito mais rápido e prático chamar o seu.
-            </p>
-          </div>
+        <div className="space-y-4 text-center py-6 lg:py-8">
+          <h1 className="text-foreground mb-3 text-2xl lg:text-3xl">Seu Carro de Linha, na Palma da Mão</h1>
+          <p className="text-muted-foreground text-sm lg:text-base max-w-2xl mx-auto px-4">
+            Em nossa região, táxi sempre foi carro de linha. Agora, com o nosso app, ficou muito mais rápido e prático chamar o seu.
+          </p>
 
-        {/* Search Bar */}
-        <div className="max-w-2xl mx-auto">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar rota ou motorista..."
-              className="pl-12 h-16 bg-input-background text-base border-border shadow-sm"
-            />
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto mt-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar rota ou motorista..."
+                className="pl-12 h-16 bg-input-background text-base border-border shadow-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Ad Carousel */}
-      <div>
-        <h2 className="text-foreground mb-3">Anúncios em Destaque</h2>
-        <AdCarousel />
-      </div>
+        {/* Ad Carousel */}
+        <div>
+          <h2 className="text-foreground mb-3">Anúncios em Destaque</h2>
+          <AdCarousel />
+        </div>
 
-      {/* Info buttons above Featured Drivers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Button 
-          onClick={() => setShowHowToCallModal(true)}
-          variant="outline"
-          className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-yellow-500/50 hover:bg-yellow-500/10"
-        >
-          <CarIcon className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-          <div className="text-left">
-            <div className="text-foreground text-sm">Como Chamar um Carro</div>
-            <div className="text-muted-foreground text-xs">Veja o passo a passo</div>
-          </div>
-        </Button>
-        
-        <Button 
-          onClick={() => setShowTipsModal(true)}
-          variant="outline"
-          className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-green-500/50 hover:bg-green-500/10"
-        >
-          <HandshakeIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-          <div className="text-left">
-            <div className="text-foreground text-sm">Dicas de Boa Convivência</div>
-            <div className="text-muted-foreground text-xs">Aprenda as melhores práticas</div>
-          </div>
-        </Button>
-
-        {userType === 'driver' && (
+        {/* Info Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button 
-            onClick={() => setShowStatusHelpModal(true)}
+            onClick={() => setShowHowToCallModal(true)}
             variant="outline"
-            className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-blue-500/50 hover:bg-blue-500/10 sm:col-span-2"
+            className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-yellow-500/50 hover:bg-yellow-500/10"
           >
-            <Radio className="w-5 h-5 text-blue-500 flex-shrink-0" />
+            <CarIcon className="w-5 h-5 text-yellow-500 flex-shrink-0" />
             <div className="text-left">
-              <div className="text-foreground text-sm">Como Usar o Status Online/Ausente</div>
-              <div className="text-muted-foreground text-xs">Gerencie sua disponibilidade</div>
+              <div className="text-foreground text-sm">Como Chamar um Carro</div>
+              <div className="text-muted-foreground text-xs">Veja o passo a passo</div>
             </div>
           </Button>
-        )}
-      </div>
 
-      {/* Featured Drivers */}
-      <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-          <h2 className="text-foreground">Motoristas em Destaque</h2>
-          {userType === 'passenger' && (
-            <Button onClick={() => onNavigate('search')} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 h-9">
-              Ver Todos
+          <Button 
+            onClick={() => setShowTipsModal(true)}
+            variant="outline"
+            className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-green-500/50 hover:bg-green-500/10"
+          >
+            <HandshakeIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+            <div className="text-left">
+              <div className="text-foreground text-sm">Dicas de Boa Convivência</div>
+              <div className="text-muted-foreground text-xs">Aprenda as melhores práticas</div>
+            </div>
+          </Button>
+
+          {userType === 'driver' && (
+            <Button 
+              onClick={() => setShowStatusHelpModal(true)}
+              variant="outline"
+              className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-blue-500/50 hover:bg-blue-500/10 sm:col-span-2"
+            >
+              <Radio className="w-5 h-5 text-blue-500 flex-shrink-0" />
+              <div className="text-left">
+                <div className="text-foreground text-sm">Como Usar o Status Online/Ausente</div>
+                <div className="text-muted-foreground text-xs">Gerencie sua disponibilidade</div>
+              </div>
             </Button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:gap-4">
-          {drivers.map((driver) => (
-            <Card key={driver.id} className="shadow-sm hover:shadow-md transition-shadow bg-card border-border">
-              <CardHeader className="p-4">
-                <div className="flex items-start gap-3">
-                  <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
-                    <ImageWithFallback
-                      src={driver.avatar}
-                      alt={driver.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <AvatarFallback className="bg-green-600 text-white">
-                      {driver.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-foreground text-base sm:text-lg truncate">{driver.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">{driver.rating}</span>
-                          <span className="text-muted-foreground text-xs sm:text-sm">({driver.trips} viagens)</span>
-                        </CardDescription>
+        {/* Featured Drivers */}
+        <div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+            <h2 className="text-foreground">Motoristas em Destaque</h2>
+            {userType === 'passenger' && (
+              <Button onClick={() => onNavigate('search')} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 h-9">
+                Ver Todos
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:gap-4">
+            {filteredDrivers.length === 0 && (
+              <p className="text-muted-foreground text-sm">Nenhum motorista encontrado.</p>
+            )}
+            {filteredDrivers.slice(0, 3).map(driver => (
+              <Card key={driver._id || driver.email} className="shadow-sm hover:shadow-md transition-shadow bg-card border-border">
+                <CardHeader className="px-4">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
+                      {driver.avatar ? (
+                        <ImageWithFallback src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <AvatarFallback className="bg-green-600 text-white">
+                          {driver.name.split(' ').map((n: any[]) => n[0]).join('')}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-foreground text-base sm:text-lg truncate">{driver.name}</CardTitle>
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
+                            <span className="text-xs sm:text-sm">{driver.avgRating}</span>
+                            <span className="text-muted-foreground text-xs sm:text-sm">({driver.totalReviews} avaliações)</span>
+                          </CardDescription>
+                        </div>
+                        <Badge 
+                          variant="secondary" 
+                          className={`flex-shrink-0 text-xs sm:text-sm border-0 ${
+                            driver.status === 'online' 
+                              ? 'bg-green-600/20 text-green-400' 
+                              : 'bg-gray-600/20 text-gray-400'
+                          }`}
+                        >
+                          {driver.status === 'online' ? 'Online' : 'Offline'}
+                        </Badge>
                       </div>
-                      <Badge 
-                        variant="secondary" 
-                        className={`flex-shrink-0 text-xs sm:text-sm border-0 ${
-                          driver.status === 'online' 
-                            ? 'bg-green-600/20 text-green-400' 
-                            : 'bg-gray-600/20 text-gray-400'
-                        }`}
-                      >
-                        {driver.status === 'online' ? 'Online' : 'Offline'}
-                      </Badge>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 p-4 pt-0">
-                <div className="flex items-start gap-2">
-                  <CarIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground text-sm">{driver.vehicle} - {driver.licensePlate}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground text-sm">{driver.mainDeparture} → {driver.mainDestination}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground text-xs sm:text-sm">{driver.schedule}</span>
-                </div>
-                <p className="text-muted-foreground text-xs sm:text-sm">{driver.description}</p>
-                {userType === 'passenger' && (
-                  <div className="flex gap-2 pt-2">
-                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
-                      Solicitar Vaga
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onNavigate('chat')}
-                      className="h-9 w-9"
-                    >
-                      <Phone className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+                </CardHeader>
 
-      {/* Blog Preview */}
-      <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-          <h2 className="text-foreground">Últimas Notícias</h2>
-          <Button onClick={() => onNavigate('blog')} variant="outline" className="w-full sm:w-auto h-9">
-            Ver Blog
-          </Button>
+                <CardContent className="space-y-2 p-4 pt-0">
+                  <div className="flex items-start gap-2">
+                    <CarIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-foreground text-sm">{driver.vehicle} - {driver.licensePlate}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-foreground text-sm">{driver.origin} → {driver.destination}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground text-xs sm:text-sm">{driver.availableDays}</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs sm:text-sm">{driver.description}</p>
+                  {userType === 'passenger' && (
+                    <div className="flex gap-2 pt-2">
+                      <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
+                        Solicitar Vaga
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => onNavigate('chat')}
+                        className="h-9 w-9"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-        <Card className="shadow-sm bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <h3 className="text-foreground mb-1">Nova funcionalidade: Rotas Recorrentes</h3>
-                <p className="text-muted-foreground text-sm mb-2">
-                  Agora você pode agendar suas caronas para a semana toda de uma vez só...
-                </p>
-                <span className="text-blue-500 text-xs">Há 2 dias</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
+        {/* Blog Preview */}
+        <div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+            <h2 className="text-foreground">Últimas Notícias</h2>
+            <Button onClick={() => onNavigate('blog')} variant="outline" className="w-full sm:w-auto h-9">
+              Ver Blog
+            </Button>
+          </div>
+
+          {blogs.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhuma notícia disponível.</p>
+          ) : (
+            blogs.map((post) => {
+              const preview = post.content.length > 120 
+                ? post.content.slice(0, 120) + "..."
+                : post.content;
+
+              const date = new Date(post.createdAt).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              });
+
+              return (
+                <Card key={post._id || post.title} className="shadow-sm bg-card border-border mb-3">
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      
+                      {/* Imagem da notícia */}
+                      <img 
+                        src={post.image} 
+                        alt={post.title}
+                        className="w-20 h-20 object-cover rounded-md flex-shrink-0"
+                      />
+
+                      {/* Conteúdo */}
+                      <div className="flex-1">
+                        <h3 className="text-foreground mb-1">{post.title}</h3>
+
+                        <p className="text-muted-foreground text-sm mb-2">
+                          {preview}
+                        </p>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-blue-500 text-xs">{date}</span>
+                          <span className="text-muted-foreground text-xs">Por {post.authorName}</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Second Ad Carousel */}
       <div className="p-4 pt-0">
         <AdCarousel />
       </div>
-      
+
       <Footer />
       <ScrollToTop />
 
@@ -405,23 +452,6 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
                         <li>Encontre a seção <strong>"Status de Disponibilidade"</strong></li>
                         <li>Use os botões <strong>"Online"</strong> ou <strong>"Ausente"</strong> conforme necessário</li>
                       </ol>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-purple-500 text-xl">⏰</span>
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <h3 className="text-foreground">Agendamento Automático (Opcional)</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Para facilitar sua rotina, você pode configurar o <strong className="text-purple-500">Agendamento Automático</strong> no seu perfil. Defina horários específicos para ficar automaticamente Online (por exemplo, das 7h às 19h em dias úteis).
-                    </p>
-                    <div className="bg-card rounded-md p-3 border border-border">
-                      <p className="text-xs text-muted-foreground">💡 Economize tempo e nunca esqueça de ficar Online nos seus horários de trabalho!</p>
                     </div>
                   </div>
                 </div>
