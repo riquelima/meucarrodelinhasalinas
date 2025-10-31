@@ -71,7 +71,17 @@ export default function App() {
     }
 
     try {
-      const decoded: JwtPayload = jwtDecode(token);
+      const decoded: JwtPayload & { exp?: number } = jwtDecode(token);
+
+      if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+        console.warn('Token expirado');
+        localStorage.removeItem('token');
+        setIsLoadingUser(false);
+        setUserType(null);
+        setUser(null);
+        setCurrentScreen('login');
+        return;
+      }
 
       let type: UserType = null;
       if (decoded.role === 'motorista') type = 'driver';
