@@ -20,7 +20,6 @@ export function BlogScreen() {
   const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-
   const categories = ["Todos", "tecnologia", "financas", "seguranca", "dicas", "sustentabilidade"];
 
   useEffect(() => {
@@ -41,7 +40,6 @@ export function BlogScreen() {
         if (!res.ok) throw new Error("Erro ao buscar posts");
 
         const data = await res.json();
-        console.log(data)
         setPosts(data);
       } catch (err: any) {
         setError(err.message);
@@ -76,6 +74,29 @@ export function BlogScreen() {
   if (error) return <div className="text-center text-red-500 py-10">{error}</div>;
   if (posts.length === 0) return <div className="text-center py-10">Nenhum post encontrado.</div>;
 
+  const handleAddView = async (post: any) => {
+    setSelectedPost(post);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3000/blogs/${post._id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Erro ao atualizar visualização");
+
+      setPosts(prevPosts =>
+        prevPosts.map(p =>
+          p._id === post._id ? { ...p, views: (p.views || 0) + 1 } : p
+        )
+      );
+    } catch (err) {
+      console.error("Erro ao atualizar visualização:", err);
+    }
+  };
 
   return (
     <div className="pt-20">
@@ -146,22 +167,12 @@ export function BlogScreen() {
                 </div>
                 <h2 className="text-foreground mb-2 text-lg lg:text-xl">{filteredPosts[0].title}</h2>
                 <p className="text-muted-foreground text-sm mb-4 line-clamp-4">{filteredPosts[0].content}</p>
-                <Button onClick={async () => {
-                  setSelectedPost(filteredPosts[0]); // abre o modal
-
-                  try {
-                    const token = localStorage.getItem("token");
-                    await fetch(`http://localhost:3000/blogs/${filteredPosts[0]._id}`, {
-                      method: "PATCH",
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-                  } catch (err) {
-                    console.error("Erro ao atualizar visualização:", err);
-                  }
-                }}
-                  className="bg-blue-600 hover:bg-blue-700 h-9">Ler mais</Button>
+                <Button
+                  onClick={() => handleAddView(filteredPosts[0])}
+                  className="bg-blue-600 hover:bg-blue-700 h-9"
+                >
+                  Ler mais
+                </Button>
               </div>
             </div>
           </Card>
@@ -202,21 +213,7 @@ export function BlogScreen() {
                   variant="outline"
                   size="sm"
                   className="w-full h-8 text-xs sm:text-sm"
-                  onClick={async () => {
-                    setSelectedPost(post);
-
-                    try {
-                      const token = localStorage.getItem("token");
-                      await fetch(`http://localhost:3000/blogs/${post._id}`, {
-                        method: "PATCH",
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                        },
-                      });
-                    } catch (err) {
-                      console.error("Erro ao atualizar visualização:", err);
-                    }
-                  }}
+                  onClick={() => handleAddView(post)}
                 >
                   Ler mais
                 </Button>
@@ -295,12 +292,9 @@ export function BlogScreen() {
                         <InstagramIcon className="w-6 h-6 text-white" />
                         <span>Comente sobre essa publicação</span>
                       </div>
-
-
                     </button>
                   )}
                 </div>
-
               </>
             )}
           </DialogContent>
