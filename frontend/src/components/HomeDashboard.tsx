@@ -161,13 +161,13 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-2 sm:gap-4">
             {filteredDrivers.length === 0 && (
               <p className="text-muted-foreground text-sm">Nenhum motorista encontrado.</p>
             )}
             {filteredDrivers.slice(0, 3).map(driver => (
               <Card key={driver._id || driver.email} className="shadow-sm hover:shadow-md transition-shadow bg-card border-border">
-                <CardHeader className="p-4">
+                <CardHeader className="px-4">
                   <div className="flex items-start gap-3">
                     <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
                       {driver.avatar ? (
@@ -250,21 +250,48 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
           {blogs.length === 0 ? (
             <p className="text-muted-foreground text-sm">Nenhuma notícia disponível.</p>
           ) : (
-            blogs.map((post) => (
-              <Card key={post._id} className="shadow-sm bg-card border-border mb-3">
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <h3 className="text-foreground mb-1">{post.title}</h3>
-                      <p className="text-muted-foreground text-sm mb-2">
-                        {post.preview}
-                      </p>
-                      <span className="text-blue-500 text-xs">{post.createdAt}</span>
+            blogs.map((post) => {
+              const preview = post.content.length > 120 
+                ? post.content.slice(0, 120) + "..."
+                : post.content;
+
+              const date = new Date(post.createdAt).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              });
+
+              return (
+                <Card key={post._id || post.title} className="shadow-sm bg-card border-border mb-3">
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      
+                      {/* Imagem da notícia */}
+                      <img 
+                        src={post.image} 
+                        alt={post.title}
+                        className="w-20 h-20 object-cover rounded-md flex-shrink-0"
+                      />
+
+                      {/* Conteúdo */}
+                      <div className="flex-1">
+                        <h3 className="text-foreground mb-1">{post.title}</h3>
+
+                        <p className="text-muted-foreground text-sm mb-2">
+                          {preview}
+                        </p>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-blue-500 text-xs">{date}</span>
+                          <span className="text-muted-foreground text-xs">Por {post.authorName}</span>
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       </div>
