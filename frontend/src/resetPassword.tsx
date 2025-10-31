@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
@@ -15,6 +15,19 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Extrai o token da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl);
+    } else {
+      setFormError("Token inválido ou ausente. Solicite um novo link de recuperação.");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,12 +47,32 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
       return;
     }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setIsSuccess(true);
+    if (!token) {
+      setFormError("Token inválido. Solicite um novo link de recuperação.");
+      setIsSubmitting(false);
+      return;
+    }
 
+    try {
+      const response = await fetch("http://localhost:3000/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          token,
+          newPassword 
+        }),
+      });
+
+      if (response.ok) {
+        setIsSuccess(true);
+      } else {
+        const data = await response.json();
+        setFormError(data.message || "Erro ao redefinir senha. Tente novamente.");
+      }
     } catch (err: any) {
-      setFormError(err.message);
+      setFormError("Erro ao conectar com o servidor. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -85,6 +118,7 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
+                  disabled={!token || isSubmitting}
                 />
               </div>
 
@@ -98,6 +132,7 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  disabled={!token || isSubmitting}
                 />
               </div>
 
@@ -110,7 +145,7 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
               <Button 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700 h-11"
-                disabled={isSubmitting}
+                disabled={!token || isSubmitting}
               >
                 {isSubmitting ? "Redefinindo..." : "Redefinir Senha"}
               </Button>

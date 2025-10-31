@@ -12,11 +12,35 @@ interface ForgotPasswordScreenProps {
 export function ForgotPasswordScreen({ onNavigate }: ForgotPasswordScreenProps) {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email) {
-      setEmailSent(true);
+      setIsLoading(true);
+      setError("");
+      
+      try {
+        const response = await fetch("http://localhost:3000/auth/forgot-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        if (response.ok) {
+          setEmailSent(true);
+        } else {
+          const data = await response.json();
+          setError(data.message || "Erro ao enviar e-mail de recuperação");
+        }
+      } catch (err) {
+        setError("Erro ao conectar com o servidor. Tente novamente.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -47,10 +71,24 @@ export function ForgotPasswordScreen({ onNavigate }: ForgotPasswordScreenProps) 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-11">
-                Enviar E-mail de Recuperação
+              
+              {error && (
+                <div className="p-4 bg-red-600/10 border border-red-500/50 rounded-lg">
+                  <p className="text-red-500 text-sm text-center">
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700 h-11"
+                disabled={isLoading}
+              >
+                {isLoading ? "Enviando..." : "Enviar E-mail de Recuperação"}
               </Button>
             </form>
           ) : (
