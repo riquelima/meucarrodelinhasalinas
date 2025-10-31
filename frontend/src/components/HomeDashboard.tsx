@@ -22,6 +22,7 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
   const [showStatusHelpModal, setShowStatusHelpModal] = useState(false);
 
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
 
@@ -44,6 +45,24 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
       }
     };
     fetchDrivers();
+  }, []);
+
+  // Buscar blogs do backend
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3000/blogs/home', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        setBlogs(data);
+      } catch (err) {
+        console.error("Erro ao carregar blogs", err);
+        setBlogs([]);
+      }
+    };
+    fetchBlogs();
   }, []);
 
   // Filtrar motoristas por nome ou rota
@@ -219,6 +238,35 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
           </div>
         </div>
 
+        {/* Blog Preview */}
+        <div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+            <h2 className="text-foreground">Últimas Notícias</h2>
+            <Button onClick={() => onNavigate('blog')} variant="outline" className="w-full sm:w-auto h-9">
+              Ver Blog
+            </Button>
+          </div>
+
+          {blogs.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhuma notícia disponível.</p>
+          ) : (
+            blogs.map((post) => (
+              <Card key={post._id} className="shadow-sm bg-card border-border mb-3">
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <h3 className="text-foreground mb-1">{post.title}</h3>
+                      <p className="text-muted-foreground text-sm mb-2">
+                        {post.preview}
+                      </p>
+                      <span className="text-blue-500 text-xs">{post.createdAt}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Second Ad Carousel */}
