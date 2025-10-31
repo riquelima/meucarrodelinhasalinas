@@ -5,37 +5,29 @@ import { BlogCategory } from '../schemas/blog.schema';
 export class CreateBlogDto {
   @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Titulo Obrigatorio' })
   title: string;
 
   @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Descricao é obrigatoria' })
   content: string;
 
   @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Autor é obrigatorio' })
   authorId: string;
 
   @ApiProperty({ enum: BlogCategory })
   @IsEnum(BlogCategory)
   category: BlogCategory;
-
-  @ApiProperty({ required: false, description: 'Imagem do blog principal (arquivo)' })
-  @IsOptional()
-  image?: string;
-
-  @ApiProperty({ required: false, description: 'Imagem do blog 2 (arquivo)' })
-  @IsOptional()
-  image2?: string;
-
-  @ApiProperty({ required: false, description: 'Imagem do blog 3 (arquivo)' })
-  @IsOptional()
-  image3?: string;
-
+  
   @ApiProperty({ required: false, description: 'Indica se o blog está publicado' })
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
+
+  @ApiProperty({ required: false, description: 'Link externo' })
+  @IsOptional()
+  link?: string;
 }

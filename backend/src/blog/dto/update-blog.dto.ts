@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsBoolean } from 'class-validator';
 import { BlogCategory } from '../schemas/blog.schema';
 
 export class UpdateBlogDto {
@@ -25,13 +25,11 @@ export class UpdateBlogDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  image?: string;
+  link?: string;
 
-  @ApiProperty({ required: false })
   @IsOptional()
-  image2?: string;
+  @IsBoolean()
+  isPublished?: boolean;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  image3?: string;
+
 }
