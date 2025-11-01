@@ -9,9 +9,10 @@ interface HeaderProps {
   unreadMessages: number;
   theme: 'light' | 'dark';
   onThemeChange: (theme: 'light' | 'dark') => void;
+  onNavigate: (screen: string) => void;
 }
 
-export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onThemeChange }: HeaderProps) {
+export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onThemeChange, onNavigate }: HeaderProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -20,10 +21,8 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
       const currentScrollY = window.scrollY;
       
       if (currentScrollY < lastScrollY || currentScrollY < 50) {
-        // Scrolling up or near top
         setIsVisible(true);
       } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down
         setIsVisible(false);
       }
       
@@ -44,7 +43,10 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
       }`}
     >
       <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
+        <div 
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => onNavigate('dashboard')}
+        >
           <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
             <Car className="w-6 h-6 text-white" />
           </div>
@@ -55,14 +57,6 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-lg border border-border">
-            <Sun className="w-4 h-4 text-muted-foreground" />
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={(checked) => onThemeChange(checked ? 'dark' : 'light')}
-            />
-            <Moon className="w-4 h-4 text-muted-foreground" />
-          </div>
           <div className="relative">
             <Button
               onClick={onMenuClick}

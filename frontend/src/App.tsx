@@ -171,6 +171,7 @@ export default function App() {
         unreadMessages={getUnreadMessages()}
         theme={theme}
         onThemeChange={setTheme}
+        onNavigate={handleNavigate}
       />
       <Sidebar
         userType={userType}
@@ -186,7 +187,6 @@ export default function App() {
           <HomeDashboard onNavigate={handleNavigate} userType={userType} />
         )}
         {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} />}
-        {currentScreen === 'search' && userType === 'driver' && <DriverDashboard onNavigate={handleNavigate} />}
         {currentScreen === 'search' && userType === 'advertiser' && <AdvertiserDashboard onNavigate={handleNavigate} />}
         {currentScreen === 'blog' && <BlogScreen />}
         {currentScreen === 'chat' && userType !== 'admin' && <ChatScreen userType={userType} />}
