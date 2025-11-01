@@ -5,11 +5,12 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
-import { Star, Car, TrendingUp, Award, Edit2, Camera, LogOut, Radio, Loader2 } from "lucide-react";
+import { Star, Car, TrendingUp, Award, Edit2, Camera, LogOut, Radio, Loader2, Moon, Sun } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { Switch } from "./ui/switch";
 
 interface UserProfile {
   _id: string;
@@ -448,6 +449,14 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
           <div>
             <h1 className={`${getColorText()} mb-1`}>Meu Perfil</h1>
             <p className="text-muted-foreground text-sm">Gerencie suas informações pessoais</p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg">
+            <Sun className="w-4 h-4 text-muted-foreground" />
+            <Switch
+              checked={theme === 'dark'}
+              onCheckedChange={(checked: any) => onThemeChange(checked ? 'dark' : 'light')}
+            />
+            <Moon className="w-4 h-4 text-muted-foreground" />
           </div>
           {onLogout && (
             <Button

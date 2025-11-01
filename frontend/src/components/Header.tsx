@@ -57,14 +57,6 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
         </div>
         
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-lg border border-border">
-            <Sun className="w-4 h-4 text-muted-foreground" />
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={(checked: any) => onThemeChange(checked ? 'dark' : 'light')}
-            />
-            <Moon className="w-4 h-4 text-muted-foreground" />
-          </div>
           <div className="relative">
             <Button
               onClick={onMenuClick}
