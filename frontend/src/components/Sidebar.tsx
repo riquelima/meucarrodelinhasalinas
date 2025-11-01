@@ -56,7 +56,7 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
 
   const baseMenuItems = [
     { id: 'dashboard', label: 'Início', icon: Home },
-    { id: 'search', label: getSearchLabel(), icon: Search },
+    ...(userType !== 'driver' ? [{ id: 'search', label: getSearchLabel(), icon: Search }] : []),
     { id: 'blog', label: 'Blog', icon: BookOpen },
     { id: 'chat', label: 'Mensagens', icon: MessageCircle },
   ];

@@ -187,7 +187,6 @@ export default function App() {
           <HomeDashboard onNavigate={handleNavigate} userType={userType} />
         )}
         {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} />}
-        {currentScreen === 'search' && userType === 'driver' && <DriverDashboard onNavigate={handleNavigate} />}
         {currentScreen === 'search' && userType === 'advertiser' && <AdvertiserDashboard onNavigate={handleNavigate} />}
         {currentScreen === 'blog' && <BlogScreen />}
         {currentScreen === 'chat' && userType !== 'admin' && <ChatScreen userType={userType} />}
