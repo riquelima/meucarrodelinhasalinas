@@ -171,6 +171,7 @@ export default function App() {
         unreadMessages={getUnreadMessages()}
         theme={theme}
         onThemeChange={setTheme}
+        onNavigate={handleNavigate}
       />
       <Sidebar
         userType={userType}
