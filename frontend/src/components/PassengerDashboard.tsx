@@ -41,8 +41,8 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
         if (!res.ok) throw new Error("Erro ao buscar motoristas");
 
         const data = await res.json();
-        setDrivers(data);
-        setFilteredDrivers(data);
+        setDrivers(data || []);
+        setFilteredDrivers(data || []);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -55,24 +55,29 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
 
   // Filtrar motoristas
   useEffect(() => {
-    const filtered = drivers.filter(driver => {
-      const origin = driver.origin || "";
-      const destination = driver.destination || "";
-      const name = driver.name || "";
+    let filtered = drivers;
 
-      if (departureFilter.trim() && !origin.toLowerCase().includes(departureFilter.toLowerCase())) return false;
-      if (destinationFilter.trim() && !destination.toLowerCase().includes(destinationFilter.toLowerCase())) return false;
-      if (searchTerm.trim() && !(name.toLowerCase().includes(searchTerm.toLowerCase()) || `${origin} → ${destination}`.toLowerCase().includes(searchTerm.toLowerCase()))) return false;
+    if (departureFilter.trim()) {
+      filtered = filtered.filter(driver =>
+        driver.origin?.toLowerCase().includes(departureFilter.toLowerCase())
+      );
+    }
 
-      return true;
-    });
+    if (destinationFilter.trim()) {
+      filtered = filtered.filter(driver =>
+        driver.destination?.toLowerCase().includes(destinationFilter.toLowerCase())
+      );
+    }
+
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(driver =>
+        driver.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${driver.origin} → ${driver.destination}`.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
     setFilteredDrivers(filtered);
   }, [searchTerm, departureFilter, destinationFilter, drivers]);
-
-  if (loading) return <div className="text-center py-10">Carregando motoristas...</div>;
-  if (error) return <div className="text-center text-red-500 py-10">{error}</div>;
-  if (filteredDrivers.length === 0) return <div className="text-center py-10">Nenhum motorista encontrado.</div>;
 
   return (
     <div className="pt-20">
@@ -160,76 +165,97 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
 
         {/* Lista de motoristas */}
         <div className="grid grid-cols-1 gap-2 sm:gap-4">
-          {filteredDrivers.map(driver => (
-            <Card key={driver._id || driver.email} className="shadow-sm hover:shadow-md transition-shadow bg-card border-border">
-              <CardHeader className="px-4">
-                <div className="flex items-start gap-3">
-                  <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
-                    {driver.avatar ? (
-                      <ImageWithFallback
-                        src={driver.avatar}
-                        alt={driver.name || "Motorista"}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <AvatarFallback className="bg-green-600 text-white">
-                        {(driver.name || "M").split(' ').map((n: any[]) => n[0]).join('')}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-foreground text-base sm:text-lg truncate">{driver.name || "Motorista"}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">{driver.avgRating || 0}</span>
-                          <span className="text-muted-foreground text-xs sm:text-sm">({driver.totalReviews || 0} avaliações)</span>
-                        </CardDescription>
+          {loading ? (
+            <div className="text-center py-10 col-span-full">Carregando motoristas...</div>
+          ) : error ? (
+            <div className="text-center text-red-500 py-10 col-span-full">{error}</div>
+          ) : filteredDrivers.length === 0 ? (
+            <div className="text-center py-10 col-span-full">Nenhum motorista encontrado.</div>
+          ) : (
+            filteredDrivers.map((driver: any) => (
+              <Card
+                key={driver._id || driver.email || Math.random()}
+                className="shadow-sm hover:shadow-md transition-shadow bg-card border-border"
+              >
+                <CardHeader className="px-4">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
+                      {driver.avatar ? (
+                        <ImageWithFallback
+                          src={driver.avatar}
+                          alt={driver.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback className="bg-green-600 text-white">
+                          {driver.name?.split(" ").map((n: string) => n[0]).join("")}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-foreground text-base sm:text-lg truncate">
+                            {driver.name}
+                          </CardTitle>
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs sm:text-sm">{driver.avgRating || 0}</span>
+                            <span className="text-muted-foreground text-xs sm:text-sm">
+                              ({driver.totalReviews || 0} avaliações)
+                            </span>
+                          </CardDescription>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={`flex-shrink-0 text-xs sm:text-sm border-0 ${
+                            driver.status === "online"
+                              ? "bg-green-600/20 text-green-400"
+                              : "bg-gray-600/20 text-gray-400"
+                          }`}
+                        >
+                          {driver.status === "online" ? "Online" : "Offline"}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant="secondary"
-                        className={`flex-shrink-0 text-xs sm:text-sm border-0 ${
-                          driver.status === 'online'
-                            ? 'bg-green-600/20 text-green-400'
-                            : 'bg-gray-600/20 text-gray-400'
-                        }`}
-                      >
-                        {driver.status === 'online' ? 'Online' : 'Offline'}
-                      </Badge>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 p-4 pt-0">
-                <div className="flex items-start gap-2">
-                  <CarIcon className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground text-sm">{driver.vehicle || "N/A"} - {driver.licensePlate || "N/A"}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground text-sm">{driver.origin || "N/A"} → {driver.destination || "N/A"}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground text-xs sm:text-sm">{driver.availableDays || "N/A"}</span>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
-                    Solicitar Vaga
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onNavigate('chat')}
-                    className="h-9 w-9"
-                  >
-                    <Phone className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent className="space-y-2 p-4 pt-0">
+                  <div className="flex items-start gap-2">
+                    <CarIcon className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-foreground text-sm">
+                      {driver.vehicle} - {driver.licensePlate}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-foreground text-sm">
+                      {driver.origin} → {driver.destination}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground text-xs sm:text-sm">
+                      {driver.availableDays || "Indefinido"}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
+                      Solicitar Vaga
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onNavigate("chat")}
+                      className="h-9 w-9"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 

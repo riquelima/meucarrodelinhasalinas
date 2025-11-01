@@ -163,7 +163,7 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
 
           <div className="grid grid-cols-1 gap-2 sm:gap-4">
             {filteredDrivers.length === 0 && (
-              <p className="text-muted-foreground text-sm">Nenhum motorista encontrado.</p>
+              <div className="text-center py-10 col-span-full">Nenhum motorista encontrado.</div>
             )}
             {filteredDrivers.slice(0, 3).map(driver => (
               <Card key={driver._id || driver.email} className="shadow-sm hover:shadow-md transition-shadow bg-card border-border">
