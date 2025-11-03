@@ -18,6 +18,7 @@ import { UpdateAdsDto } from './dto/update-ads.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/roles.decorator';
 import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
+import { UpdateAdStatusDto } from './dto/update-status.dto';
 
 @ApiTags('ads')
 @ApiBearerAuth()
@@ -53,9 +54,9 @@ export class AdsController {
   }
 
   @ApiOperation({ summary: 'Retorna todos os anúncios do usuário autenticado' })
-  @Get(':id/my')
-  async getUserAds(@Req() req) {
-    return this.adsService.getUserAds(req.user.sub);
+  @Get('my/:id')
+  async getUserAds(@Param('id') id: string) {
+    return this.adsService.getUserAds(id);
   }
 
   @ApiOperation({ summary: 'Retorna KPIs e métricas do usuário autenticado para o dashboard' })
@@ -64,7 +65,7 @@ export class AdsController {
     return this.adsService.getUserKpis(userId);
   }
 
-  @ApiOperation({ summary: 'Atualiza dados de um anúncio (editar, ativar, pausar)' })
+  @ApiOperation({ summary: 'Atualiza dados de um anúncio' })
   @ApiParam({ name: 'id', type: String })
   @UseInterceptors(FileInterceptor('image'))
   @Patch(':id')
@@ -74,8 +75,22 @@ export class AdsController {
 
   @Delete(':id')
   async deleteById(@Param('id') id: string) {
-    
+
     return this.adsService.deleteById(id);
+  }
+
+  @Public()
+  @ApiOperation({ summary: 'Adiciona uma visualização ao anuncio' })
+  @Patch(':id/clicks')
+  async updateViews(@Param('id') id: string) {
+    return this.adsService.updateViews(id);
+
+  }
+
+  @ApiOperation({ summary: 'Altera status do anuncio' })
+  @Patch(':id/status')
+  async updateStatus(@Param('id') id: string, @Body() body: UpdateAdStatusDto) {
+    return this.adsService.updateStatus(id, body.isActive);
   }
 
 

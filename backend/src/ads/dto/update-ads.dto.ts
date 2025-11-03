@@ -2,10 +2,25 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateAdsDto } from './create-ads.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsBoolean } from 'class-validator';
+import { AdsCategory } from '../schemas/ads.schema';
 
-export class UpdateAdsDto extends PartialType(CreateAdsDto) {
-  @ApiPropertyOptional({ example: false, description: 'Define se o anúncio está ativo ou pausado' })
-  @IsOptional()
-  @IsBoolean({ message: 'O isActive deve ser booleano' })
-  isActive?: boolean;
+export class UpdateAdsDto {
+
+    @IsOptional()
+    nameCompany: string;
+  
+    @IsOptional()
+    numberPhone: string;
+  
+    @IsOptional()
+    description?: string;  
+    
+    @IsOptional()  
+    image: string;
+  
+    @IsOptional()
+    category: AdsCategory;
+  
+    @IsOptional()
+    isActive?: boolean;
 }
