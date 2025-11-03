@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -5,81 +6,316 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
 import { Badge } from "./ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "./ui/dialog";
+import { jwtDecode } from "jwt-decode";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Plus, Eye, MousePointerClick, TrendingUp, Play, Pause } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { AdCarousel } from "./AdCarousel";
-import { useState } from "react";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 
 interface AdvertiserDashboardProps {
+  userId: string;
   onNavigate: (screen: string) => void;
 }
 
-export function AdvertiserDashboard({ onNavigate }: AdvertiserDashboardProps) {
+interface DecodedToken {
+  sub: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardProps) {
+  const [ads, setAds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreateAdModalOpen, setIsCreateAdModalOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingAd, setEditingAd] = useState<any>(null);
 
-  const campaigns = [
-    {
-      id: 1,
-      name: "Campanha de Verão 2025",
-      status: "active",
-      views: 12453,
-      clicks: 834,
-      budget: "R$ 500,00",
-      spent: "R$ 387,00",
-    },
-    {
-      id: 2,
-      name: "Promoção Black Friday",
-      status: "paused",
-      views: 8721,
-      clicks: 542,
-      budget: "R$ 800,00",
-      spent: "R$ 245,00",
-    },
-    {
-      id: 3,
-      name: "Lançamento Produto X",
-      status: "active",
-      views: 5634,
-      clicks: 421,
-      budget: "R$ 300,00",
-      spent: "R$ 189,00",
-    },
-  ];
 
-  const viewsData = [
-    { name: "Seg", views: 2400, clicks: 180 },
-    { name: "Ter", views: 1398, clicks: 120 },
-    { name: "Qua", views: 3800, clicks: 290 },
-    { name: "Qui", views: 3908, clicks: 310 },
-    { name: "Sex", views: 4800, clicks: 380 },
-    { name: "Sáb", views: 3490, clicks: 250 },
-    { name: "Dom", views: 2890, clicks: 190 },
-  ];
 
-  const engagementData = [
-    { name: "Jan", engagement: 65 },
-    { name: "Fev", engagement: 72 },
-    { name: "Mar", engagement: 68 },
-    { name: "Abr", engagement: 81 },
-    { name: "Mai", engagement: 88 },
-    { name: "Jun", engagement: 95 },
-  ];
+  useEffect(() => {
+    async function fetchAds() {
+      try {
 
-  const handleCreateAd = () => {
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          throw new Error("Token de autenticação não encontrado.");
+        }
+
+        const decodedToken = jwtDecode<DecodedToken>(token);
+        userId = decodedToken.sub;
+        const response = await fetch(`http://localhost:3000/ads/my/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        const data = await response.json();
+        setAds(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Erro ao buscar anúncios:", error);
+        setAds([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAds();
+  }, [userId]);
+
+  const totalViews = ads.reduce((sum, ad) => sum + (ad.views || 0), 0);
+  //const conversionRate = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(2) : "0.00";
+
+  const handleCreateAd = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
     if (!agreedToTerms) {
       alert("Por favor, aceite os termos de uso antes de criar um anúncio.");
       return;
     }
-    // Lógica de criação do anúncio
-    setIsCreateAdModalOpen(false);
-    setAgreedToTerms(false);
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Token de autenticação não encontrado.");
+      return;
+    }
+
+    const decodedToken = jwtDecode<DecodedToken>(token);
+    userId = decodedToken.sub;
+
+
+    const formData = new FormData();
+    const target = e.currentTarget as typeof e.currentTarget & {
+      establishmentName: { value: string };
+      category: { value: string };
+      whatsapp: { value: string };
+      description: { value: string };
+    };
+
+    if (!selectedFile || (selectedFile instanceof FileList && selectedFile.length === 0)) {
+      setError('Imagem do anúncio é obrigatória');
+      return;
+    }
+
+    const file = selectedFile instanceof FileList ? selectedFile[0] : selectedFile;
+
+    formData.set('image', file);
+
+
+    if (target.establishmentName.value) {
+      formData.set('nameCompany', target.establishmentName.value);
+    }
+    else {
+      setError('Nome da empresa é obrigatorio')
+      return
+    }
+
+    if (selectedCategory) {
+      formData.set('category', selectedCategory);
+    }
+    else {
+      setError('Categoria do anuncio é obrigatorio')
+      return
+    }        
+
+    if (target.whatsapp.value) {
+      const formattedNumber = formatPhoneNumber(target.whatsapp.value);
+      formData.set('numberPhone', formattedNumber);
+    }
+    else {
+      setError('Numero de contato do anuncio é obrigatorio')
+      return
+    }
+
+    if (target.description.value) {
+      formData.set('description', target.description.value);
+    }
+    else {
+      setError('Descricao do anuncio é obrigatorio')
+      return
+    }
+
+
+    try {
+      const response = await fetch(`http://localhost:3000/ads/${userId}/anuncios`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Erro ao criar o anúncio");
+
+      const newAd = await response.json();
+      setAds((prev) => [newAd, ...prev]);
+      setIsCreateAdModalOpen(false);
+      setAgreedToTerms(false);
+      setError(null)
+      setSelectedFile(null)
+      target.reset();
+
+    } catch (err) {
+      console.error("Falha ao criar anúncio:", err);
+      setError("Não foi possível criar o anúncio. Tente novamente.");
+    }
   };
+
+
+
+  const handleUpdateStatus = async (_id: string, status: boolean) => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Token de autenticação não encontrado.");
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/ads/${_id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive: status }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Falha ao atualizar status");
+      }
+
+      setAds(prevAds =>
+        prevAds.map(p =>
+          p._id === _id ? { ...p, isActive: status } : p
+        )
+      );
+
+    } catch (error) {
+      console.error("Não foi possível alterar o status do anúncio:", error);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('A imagem deve ter no máximo 2MB.');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Selecione um arquivo de imagem válido.');
+      return;
+    }
+
+    setError(null)
+    setSelectedFile(file);
+  }
+
+  const handleEditAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingAd) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Token de autenticação não encontrado.");
+      return;
+    }
+
+    const establishmentName = (document.getElementById("establishmentName") as HTMLInputElement)?.value.trim();
+    const category = selectedCategory || editingAd.category;
+    const whatsapp = (document.getElementById("whatsapp") as HTMLInputElement)?.value.trim();
+    
+    const description = (document.getElementById("description") as HTMLTextAreaElement)?.value.trim();
+    const fileInput = document.getElementById("adImages") as HTMLInputElement;
+    const image = fileInput?.files?.[0];
+
+    const formData = new FormData();
+
+    // adiciona só se mudou ou existir
+    if (establishmentName && establishmentName !== editingAd.nameCompany)
+      formData.append("nameCompany", establishmentName);
+
+    if (category && category !== editingAd.category)
+      formData.append("category", category);
+
+    const formattedNumber = formatPhoneNumber(whatsapp);
+    if (whatsapp && whatsapp !== editingAd.numberPhone)
+      formData.append("numberPhone", formattedNumber);
+
+    if (description && description !== editingAd.description)
+      formData.append("description", description);
+
+    if (image)
+      formData.append("image", image);
+
+    if ([...formData.keys()].length === 0) {
+      setError("Nenhuma alteração detectada.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/ads/${editingAd._id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Falha ao atualizar anúncio");
+
+      const updatedAd = await response.json();
+
+      setAds(prevAds =>
+        prevAds.map(ad => (ad._id === editingAd._id ? updatedAd : ad))
+      );
+
+      setIsCreateAdModalOpen(false);
+      setEditingAd(null);
+      setIsEditing(false);
+      setError("");
+      setSelectedFile(null);
+
+    } catch (err) {
+      console.error(err);
+      setError("Erro ao atualizar o anúncio.");
+    }
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+
+    if (digits.startsWith('55')) return digits;
+
+    return `55${digits}`;
+  };
+
+
+
+  if (loading) {
+    return <p className="p-4 text-muted-foreground">Carregando anúncios...</p>;
+  }
 
   return (
     <div className="pt-20">
@@ -89,12 +325,13 @@ export function AdvertiserDashboard({ onNavigate }: AdvertiserDashboardProps) {
           <p className="text-muted-foreground text-sm">Gerencie suas campanhas publicitárias</p>
         </div>
 
-        {/* Ad Carousel - Preview of active ads */}
+        {/* Ad Carousel */}
         <div>
-          <div className="text-muted-foreground text-xs mb-2">Seus anúncios em destaque:</div>
+          <div className="text-muted-foreground text-xs mb-2">Anúncios em destaque:</div>
           <AdCarousel />
         </div>
 
+        {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
           <Card className="shadow-sm bg-card border-border">
             <CardContent className="p-3 sm:p-4">
@@ -102,16 +339,7 @@ export function AdvertiserDashboard({ onNavigate }: AdvertiserDashboardProps) {
                 <div className="text-muted-foreground text-xs sm:text-sm">Campanhas</div>
                 <TrendingUp className="w-4 h-4 text-purple-400" />
               </div>
-              <div className="text-purple-400 text-sm sm:text-base">3</div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-sm bg-card border-border">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-muted-foreground text-xs sm:text-sm">Visualizações</div>
-                <Eye className="w-4 h-4 text-purple-400" />
-              </div>
-              <div className="text-purple-400 text-sm sm:text-base">26.8k</div>
+              <div className="text-purple-400 text-sm sm:text-base">{ads.length}</div>
             </CardContent>
           </Card>
           <Card className="shadow-sm bg-card border-border">
@@ -120,253 +348,181 @@ export function AdvertiserDashboard({ onNavigate }: AdvertiserDashboardProps) {
                 <div className="text-muted-foreground text-xs sm:text-sm">Cliques</div>
                 <MousePointerClick className="w-4 h-4 text-purple-400" />
               </div>
-              <div className="text-purple-400 text-sm sm:text-base">1.8k</div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-sm bg-card border-border">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-muted-foreground text-xs sm:text-sm">Conversão</div>
-                <TrendingUp className="w-4 h-4 text-purple-400" />
-              </div>
-              <div className="text-purple-400 text-sm sm:text-base">6.7%</div>
+              <div className="text-purple-400 text-sm sm:text-base">{totalViews.toLocaleString()}</div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <h2 className="text-foreground">Minhas Campanhas</h2>
-            <Dialog open={isCreateAdModalOpen} onOpenChange={setIsCreateAdModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto bg-purple-400 hover:bg-purple-500">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Criar Anúncio
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-foreground">Criar Novo Anúncio</DialogTitle>
-                  <DialogDescription>Preencha as informações do seu anúncio</DialogDescription>
-                </DialogHeader>
+        {/* Botão de Criar Anúncio */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4">
+          <h2 className="text-foreground">Minhas Campanhas</h2>
+          <Dialog
+            open={isCreateAdModalOpen}
+            onOpenChange={(open: any) => {
+              setIsCreateAdModalOpen(open);
+              if (!open) {
+                setEditingAd(null);
+                setIsEditing(false);
+                setError("");
+              }
+            }}
+          >
+
+            <DialogTrigger asChild>
+              <Button className="w-full sm:w-auto bg-purple-400 hover:bg-purple-500">
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Anúncio
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">{isEditing ? "Editar Anúncio" : "Criar Novo Anúncio"}</DialogTitle>
+                <DialogDescription>Preencha as informações do seu anúncio</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateAd} className="space-y-4 py-4">
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="adImages">Imagens do Anúncio *</Label>
-                    <Input 
-                      id="adImages" 
-                      type="file" 
-                      accept="image/*"
-                      multiple
-                      className="bg-input-background"
-                    />
+                    <Label htmlFor="adImages">Imagem do Anúncio *</Label>
+                    <Input id="adImages" type="file" accept="image/*" multiple className="bg-input-background" onChange={handleFileChange} />
                     <p className="text-xs text-muted-foreground">
-                      Você pode selecionar múltiplas imagens. Tamanho recomendado: 1200x628px
+                      Tamanho recomendado: 1200x628px
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="establishmentName">Nome do Estabelecimento *</Label>
-                    <Input 
-                      id="establishmentName" 
-                      placeholder="Ex: Restaurante Sabor & Arte" 
-                      className="bg-input-background" 
-                    />
+                    <Input id="establishmentName" placeholder="Ex: Restaurante Sabor & Arte" className="bg-input-background" defaultValue={editingAd?.nameCompany || ""} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoria *</Label>
-                    <Select>
+                    <Select onValueChange={setSelectedCategory} defaultValue={editingAd?.category || ""}>
                       <SelectTrigger className="bg-input-background">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="food">Alimentação</SelectItem>
-                        <SelectItem value="health">Saúde & Bem-estar</SelectItem>
-                        <SelectItem value="education">Educação</SelectItem>
-                        <SelectItem value="shopping">Compras</SelectItem>
-                        <SelectItem value="services">Serviços</SelectItem>
-                        <SelectItem value="entertainment">Entretenimento</SelectItem>
-                        <SelectItem value="other">Outros</SelectItem>
+                        <SelectItem value="Alimentação">Alimentação</SelectItem>
+                        <SelectItem value="Saúde & Bem-estar">Saúde & Bem-estar</SelectItem>
+                        <SelectItem value="Educação">Educação</SelectItem>
+                        <SelectItem value="Compras">Compras</SelectItem>
+                        <SelectItem value="Serviços">Serviços</SelectItem>
+                        <SelectItem value="Entretenimento">Entretenimento</SelectItem>
+                        <SelectItem value="Outros">Outros</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="whatsapp">WhatsApp para Contato *</Label>
-                    <Input 
-                      id="whatsapp" 
-                      type="tel" 
-                      placeholder="(91) 98765-4321" 
-                      className="bg-input-background" 
-                    />
+                    <Input id="whatsapp" type="tel" placeholder="(91) 98765-4321" className="bg-input-background" defaultValue={editingAd?.numberPhone || ""} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Descrição (Opcional)</Label>
-                    <Textarea 
-                      id="description" 
-                      placeholder="Descreva seu estabelecimento ou promoção..." 
-                      className="bg-input-background min-h-[100px]"
-                    />
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea id="description" placeholder="Descreva seu estabelecimento ou promoção..." className="bg-input-background min-h-[100px]" defaultValue={editingAd?.description || ""} />
                   </div>
-                  
-                  {/* Terms Agreement */}
                   <div className="flex items-start space-x-2 p-3 bg-muted/50 rounded-lg border border-border">
-                    <Checkbox 
-                      id="terms" 
-                      checked={agreedToTerms}
-                      onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
-                    />
+                    <Checkbox id="terms" checked={agreedToTerms} onCheckedChange={(checked: any) => setAgreedToTerms(checked as boolean)} />
                     <div className="grid gap-1.5 leading-none">
-                      <label
-                        htmlFor="terms"
-                        className="text-sm cursor-pointer"
-                      >
+                      <label htmlFor="terms" className="text-sm cursor-pointer">
                         Li e concordo com os{" "}
-                        <a 
-                          href="#" 
-                          className="text-purple-400 hover:underline"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // Abrir modal de termos ou navegar para página de termos
-                          }}
-                        >
+                        <a href="#" className="text-purple-400 hover:underline" onClick={(e) => e.preventDefault()}>
                           Termos de Uso para Anunciantes
                         </a>
                       </label>
-                      <p className="text-xs text-muted-foreground">
-                        É necessário aceitar os termos para publicar anúncios na plataforma.
-                      </p>
+                      <p className="text-xs text-muted-foreground">É necessário aceitar os termos para publicar anúncios na plataforma.</p>
                     </div>
                   </div>
                 </div>
+                {error && <p className="text-red-500 text-sm">{error}</p>}
                 <DialogFooter>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsCreateAdModalOpen(false);
-                      setAgreedToTerms(false);
+                  <Button variant="outline" onClick={() => { setIsCreateAdModalOpen(false); setAgreedToTerms(false); }}>Cancelar</Button>
+                  <Button
+                    className="bg-purple-400 hover:bg-purple-500"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      isEditing ? handleEditAd(e) : handleCreateAd(e);
                     }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    className="bg-purple-400 hover:bg-purple-500" 
-                    onClick={handleCreateAd}
                     disabled={!agreedToTerms}
                   >
-                    Criar Anúncio
+                    {isEditing ? "Salvar Alterações" : "Criar Anúncio"}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            {campaigns.map((campaign) => (
-              <Card key={campaign.id} className="shadow-sm bg-card border-border">
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Lista de anúncios */}
+        {ads.length === 0 ? (
+          <p className="text-muted-foreground mt-4">Você ainda não possui anúncios cadastrados.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 mt-4">
+            {ads.map((ad) => (
+              <Card key={ad._id} className="shadow-sm bg-card border-border">
                 <CardHeader className="p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-foreground text-base sm:text-lg flex-1">{campaign.name}</CardTitle>
-                    {campaign.status === 'active' ? (
+                    <CardTitle className="text-foreground text-base sm:text-lg flex-1">{ad.nameCompany}</CardTitle>
+                    {ad.isActive ? (
                       <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">
                         <Play className="w-3 h-3 mr-1" />
-                        Ativa
+                        Ativo
                       </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs flex-shrink-0">
-                        <Pause className="w-3 h-3 mr-1" />
-                        Pausada
-                      </Badge>
-                    )}
+                    ) :
+                      (
+                        <Badge className="bg-red-600/20 text-red-400 text-xs flex-shrink-0 border-0">
+                          <Pause className="w-3 h-3 mr-1" />
+                          Pausado
+                        </Badge>
+                      )}
+
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">{ad.description}</p>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 p-4 pt-0">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-1">Visualizações</div>
-                      <div className="text-foreground text-sm sm:text-base">{campaign.views.toLocaleString()}</div>
-                    </div>
+                  <div className="grid grid-cols-2 justify-between gap-3">
                     <div>
                       <div className="text-muted-foreground text-xs mb-1">Cliques</div>
-                      <div className="text-foreground text-sm sm:text-base">{campaign.clicks.toLocaleString()}</div>
+                      <div className="text-foreground text-sm sm:text-base">{ad.views?.toLocaleString() ?? 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground text-xs mb-1">Categoria</div>
+                      <div className="text-foreground text-sm sm:text-base">{ad.category}</div>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-                      <span>Orçamento</span>
-                      <span>{campaign.budget}</span>
-                    </div>
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span>Gasto</span>
-                      <span className="text-purple-400">{campaign.spent}</span>
-                    </div>
-                  </div>
+
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" className="flex-1 text-sm h-9">
+                    <Button
+                      variant="outline"
+                      className="flex-1 text-sm h-9"
+                      onClick={() => {
+                        setEditingAd(ad);
+                        setIsEditing(true);
+                        setIsCreateAdModalOpen(true);
+                      }}
+                    >
                       Editar
                     </Button>
                     <Button
                       variant="outline"
                       className="flex-1 text-sm h-9"
+                      onClick={() => handleUpdateStatus(ad._id, !ad.isActive)}
                     >
-                      {campaign.status === 'active' ? 'Pausar' : 'Ativar'}
+                      {ad.isActive ? 'Pausar' : 'Ativar'}
                     </Button>
+
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-        </div>
-
-        <div className="space-y-3">
-          <Card className="shadow-sm bg-card border-border">
-            <CardHeader className="p-4">
-              <CardTitle className="text-foreground text-base">Visualizações e Cliques</CardTitle>
-              <CardDescription className="text-xs">Últimos 7 dias</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={viewsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="name" stroke="#a1a1aa" style={{ fontSize: '12px' }} />
-                  <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a' }} />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="views" fill="#c084fc" name="Visualizações" />
-                  <Bar dataKey="clicks" fill="#e9d5ff" name="Cliques" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm bg-card border-border">
-            <CardHeader className="p-4">
-              <CardTitle className="text-foreground text-base">Engajamento</CardTitle>
-              <CardDescription className="text-xs">Últimos 6 meses</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={engagementData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="name" stroke="#a1a1aa" style={{ fontSize: '12px' }} />
-                  <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a' }} />
-                  <Line
-                    type="monotone"
-                    dataKey="engagement"
-                    stroke="#c084fc"
-                    strokeWidth={2}
-                    name="Taxa de Engajamento (%)"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
+        )}
       </div>
 
-      {/* Second Ad Carousel */}
+      {/* Segundo Ad Carousel */}
       <div className="p-4 pt-0">
         <AdCarousel />
       </div>
-      
+
       <Footer />
       <ScrollToTop />
     </div>

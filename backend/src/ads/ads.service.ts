@@ -57,15 +57,19 @@ export class AdsService {
     }
 
     async getUserAds(userId: string) {
-        return this.adsModel.find({ userId: new Types.ObjectId(userId) }).lean();
+        return this.adsModel.find({ userId: userId }).lean();
     }
 
     async getUserKpis(userId: string) {
-        const userObjectId = new Types.ObjectId(userId);
+        
+        const user = this.usersService.findById(userId)
 
+        if (!user){
+            throw new NotFoundException('Usuario não encontrado');
+        }
 
         const [stats] = await this.adsModel.aggregate([
-            { $match: { userId: userObjectId } },
+            { $match: { userId: userId } },
             {
                 $group: {
                     _id: null,
@@ -95,6 +99,17 @@ export class AdsService {
         if (file) {
             const image = await this.cloudinaryService.uploadImage(file, 'ads');
             updateDto.image = image.secure_url;
+        }
+
+        const allowedFields = [
+            'nameCompany', 'numberPhone', 'description', 'image', 'category',
+            'isActive'
+        ];
+
+        for (const key of Object.keys(updateDto)) {
+            if (allowedFields.includes(key)) {
+                ad[key] = updateDto[key];
+            }
         }
 
         return this.adsModel.findOneAndUpdate(
@@ -127,5 +142,25 @@ export class AdsService {
     }
 
     return { message: 'Anuncio deletado com sucesso' };
+  }
+
+  async updateViews(id: string) {
+    const updated = await this.adsModel
+      .findByIdAndUpdate(id, { $inc: { views: 1 } }, { new: true })
+      .exec();
+
+
+    if (!updated) throw new NotFoundException('Anuncio não encontrado');
+
+    return updated;
+  }
+
+  async updateStatus(id: string, status: boolean){
+
+    const anuncio = await this.adsModel.findById(id);
+        if (!anuncio) throw new NotFoundException('Anuncio não encontrado');
+
+        anuncio.isActive = status;
+        return anuncio.save();
   }
 }

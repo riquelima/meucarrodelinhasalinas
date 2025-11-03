@@ -4,6 +4,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { get } from 'mongoose';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 
 
 
@@ -46,8 +47,8 @@ export class UsersController {
 
     @Patch('/status/:id')
     @ApiOperation({ summary: 'Muda status do motorista' })
-    mudarStatusMotorista(@Param('id') id: string, @Body() status: string) {
-        return this.usersService.mudarStatusMotorista(id, status);
+    mudarStatusMotorista(@Param('id') id: string, @Body() updateUserStatusDto: UpdateUserStatusDto) {
+        return this.usersService.mudarStatusMotorista(id, updateUserStatusDto.status);
     }
 
     @Get(':id')

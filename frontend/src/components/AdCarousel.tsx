@@ -76,6 +76,29 @@ export function AdCarousel() {
     return () => clearInterval(intervalId);
   }, [api, ads]);
 
+  const handleClickAds = async (numberPhone: any, _id: any) => {
+    try {
+      await fetch(`http://localhost:3000/ads/${_id}/clicks`, {
+        method: "PATCH",
+      });
+
+      window.open(
+        `https://wa.me/${numberPhone}?text=${encodeURIComponent(
+          "Olá, vi seu anúncio no Meu Carro de Linha!"
+        )}`,
+        "_blank"
+      );
+    } catch (error) {
+      console.error("Erro ao registrar clique:", error);
+      window.open(
+        `https://wa.me/${numberPhone}?text=${encodeURIComponent(
+          "Olá, vi seu anúncio no Meu Carro de Linha!"
+        )}`,
+        "_blank"
+      );
+    }
+  }
+
   if (isLoading) return <Loading />;
   if (error) return <ErrorPage error={new Error(error)} reset={() => setError(null)} />;
 
@@ -103,11 +126,7 @@ export function AdCarousel() {
                         <p className="text-white/90 text-sm">{ad.description}</p>
                       </div>
                       <a
-                        href={`https://wa.me/${ad.numberPhone}?text=${encodeURIComponent(
-                          `Olá, vi seu anúncio no Meu Carro de Linha!`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        onClick={() => handleClickAds(ad.numberPhone, ad._id)}
                         className="flex-shrink-0 w-8 h-8 bg-green-500/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-green-600/80 transition-colors"
                         title="Conversar no WhatsApp"
                       >

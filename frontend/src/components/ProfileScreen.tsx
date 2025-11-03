@@ -38,6 +38,13 @@ interface UserProfile {
   status?: string;
 }
 
+interface AdvertiserStats {
+  totalAds?: number;
+  activeAds?: number;
+  totalViews?: number;
+  conversionRate?: number
+}
+
 interface ProfileScreenProps {
   onLogout?: () => void;
   theme: 'light' | 'dark';
@@ -127,22 +134,28 @@ const fetchAdminStats = async (): Promise<{ usersCount: number; adsCount: number
   return { usersCount, adsCount, blogsCount };
 };
 
-const fetchAdvertiserStats = async (userId: string): Promise<{ activeAds: number }> => {
+const fetchAdvertiserStats = async (userId: string): Promise<AdvertiserStats> => {
   const token = localStorage.getItem("token");
   if (!token) {
     throw new Error("Token de autenticação não encontrado.");
   }
 
-  const response = await fetch(`http://localhost:3000/ads/${userId}/my`, {
+  const response = await fetch(`http://localhost:3000/ads/${userId}/my/kpis`, {
     headers: { "Authorization": `Bearer ${token}` }
   });
 
   if (!response.ok) {
-    return { activeAds: 0 };
+    console.error('Erro ao puxar KPIS');
+    throw new Error("Token de autenticação não encontrado.");
   }
 
   const ads = await response.json();
-  return { activeAds: ads.length };
+  return {
+    totalAds: ads.totalAds,
+    activeAds: ads.activeAds,
+    conversionRate: ads.conversionRate,
+    totalViews: ads.totalViews
+  };
 };
 
 const updateUserProfile = async (userId: string, formData: FormData): Promise<UserProfile> => {
@@ -187,7 +200,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [adminStats, setAdminStats] = useState<{ usersCount: number; adsCount: number; blogsCount: number } | null>(null);
-  const [advertiserStats, setAdvertiserStats] = useState<{ activeAds: number } | null>(null);
+  const [advertiserStats, setAdvertiserStats] = useState<AdvertiserStats | null>(null);
 
   const userType = getUserTypeFromRole(profile.role);
 
@@ -197,6 +210,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
         const data = await fetchUserProfile();
         setProfile(data);
         setPreviewUrl(data.avatar || null);
+        if (data.role === 'motorista') data.status === 'offline' ? setIsOnline(false) : setIsOnline(true);
 
         if (data.role === 'admin') {
           try {
@@ -402,6 +416,42 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     }
   };
 
+  const handleSetStatusDrive = async (status: string) => {
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("Token de autenticação não encontrado.");
+    }
+
+    let userId: string;
+    const decodedToken = jwtDecode<DecodedToken>(token);
+    userId = decodedToken.sub;
+
+
+    const response = await fetch(`http://localhost:3000/users/status/${userId}`, {
+      method: 'PATCH',
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: status }),
+    });
+
+    if (response.ok) {
+      if (status === 'offline') {
+        setIsOnline(false);
+      }
+      else {
+        setIsOnline(true);
+      }
+
+    }
+    else {
+      console.error(`falha ao tenta atualizar status, ${response.statusText}`)
+    }
+
+  }
+
   if (loading) {
     return (
       <div className="pt-20 flex justify-center items-center h-screen">
@@ -438,7 +488,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
         ]
         : [
           { label: "Anúncios ativos", value: advertiserStats?.activeAds?.toString() || "0", icon: Car },
-          { label: "Visualizações totais", value: "26.8k", icon: Star },
+          { label: "Visualizações totais", value: advertiserStats?.totalViews?.toString() || "0", icon: Star },
           { label: "Taxa de cliques", value: "6.7%", icon: TrendingUp },
         ];
 
@@ -710,7 +760,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        onClick={() => setIsOnline(true)}
+                        onClick={() => handleSetStatusDrive('online')}
                         className={`flex-1 h-10 ${isOnline ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
                       >
                         <Radio className="w-4 h-4 mr-2" />
@@ -718,7 +768,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                       </Button>
                       <Button
                         type="button"
-                        onClick={() => setIsOnline(false)}
+                        onClick={() => handleSetStatusDrive('offline')}
                         className={`flex-1 h-10 ${!isOnline ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-600 hover:bg-gray-700'}`}
                       >
                         <Radio className="w-4 h-4 mr-2" />
@@ -794,8 +844,6 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
                       'Salvar Alterações'
                     )}
                   </Button>
-
-
                   <Button
                     type="button"
                     variant="outline"
