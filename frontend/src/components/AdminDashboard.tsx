@@ -14,6 +14,7 @@ import React, { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { toast } from "sonner";
 
 interface User {
   _id: string;
@@ -78,11 +79,12 @@ export function AdminDashboard() {
     content: '',
     authorId: '',
     category: 'tecnologia' as 'tecnologia' | 'financas' | 'seguranca' | 'dicas' | 'sustentabilidade',
-    isPublished: true,
+    isPublished: true, // Padrão é true (publicado)
     link: ''
   });
   const [blogImages, setBlogImages] = useState<{image?: File, image2?: File, image3?: File}>({});
   const [blogImagePreviews, setBlogImagePreviews] = useState<{image?: string, image2?: string, image3?: string}>({});
+  const [removedImages, setRemovedImages] = useState<Set<'image' | 'image2' | 'image3'>>(new Set());
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [userFilters, setUserFilters] = useState<UserFilters>({
@@ -95,7 +97,7 @@ export function AdminDashboard() {
     name: '',
     email: '',
     password: '',
-    role: 'passageiro' as 'passageiro' | 'motorista' | 'anunciante',
+    role: 'passageiro' as 'passageiro' | 'motorista' | 'anunciante' | 'admin',
     number: ''
   });
 
@@ -217,7 +219,7 @@ export function AdminDashboard() {
     return await response.json();
   };
 
-  const updateBlog = async (blogId: string, blogData: any, files: {image?: File, image2?: File, image3?: File}) => {
+  const updateBlog = async (blogId: string, blogData: any, files: {image?: File, image2?: File, image3?: File}, removedImgs?: Set<'image' | 'image2' | 'image3'>) => {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("Token não encontrado");
 
@@ -227,11 +229,21 @@ export function AdminDashboard() {
     if (blogData.authorId) formData.set('authorId', blogData.authorId);
     if (blogData.category) formData.set('category', blogData.category);
     if (blogData.isPublished !== undefined) formData.set('isPublished', blogData.isPublished.toString());
-    if (blogData.link !== undefined) formData.set('link', blogData.link);
+    if (blogData.link !== undefined && blogData.link !== '' && blogData.link !== 'true') {
+      formData.set('link', blogData.link);
+    } else if (blogData.link === '') {
+      formData.set('link', '');
+    }
 
     if (files.image) formData.set('image', files.image);
     if (files.image2) formData.set('image2', files.image2);
     if (files.image3) formData.set('image3', files.image3);
+
+    if (removedImgs) {
+      removedImgs.forEach((imgKey) => {
+        formData.set(`remove${imgKey.charAt(0).toUpperCase() + imgKey.slice(1)}`, 'true');
+      });
+    }
 
     const response = await fetch(`http://localhost:3000/blogs/${blogId}`, {
       method: 'PUT',
@@ -340,11 +352,12 @@ export function AdminDashboard() {
     try {
       await createUser(userFormData);
       setIsUserModalOpen(false);
+      toast.success(`Usuário ${userFormData.name} foi cadastrado com sucesso`);
       setUserFormData({ name: '', email: '', password: '', role: 'passageiro', number: '' });
       const usersData = await fetchUsers();
       setUsers(usersData);
     } catch (error: any) {
-      alert(error.message || 'Erro ao criar usuário');
+      toast.error(error.message || 'Erro ao criar usuário');
     } finally {
       setCreatingUser(false);
     }
@@ -359,13 +372,27 @@ export function AdminDashboard() {
     if (!userToDelete) return;
     
     try {
+      // Verifica se o usuário está tentando deletar a própria conta
+      const token = localStorage.getItem("token");
+      if (token) {
+        const decodedToken = jwtDecode<any>(token);
+        const currentUserId = decodedToken.sub;
+        if (userToDelete === currentUserId) {
+          toast.error('Você não pode excluir sua própria conta');
+          setDeleteConfirmOpen(false);
+          setUserToDelete(null);
+          return;
+        }
+      }
+      
       await deleteUser(userToDelete);
       const usersData = await fetchUsers();
       setUsers(usersData);
       setDeleteConfirmOpen(false);
       setUserToDelete(null);
+      toast.success('Usuário excluído com sucesso');
     } catch (error: any) {
-      alert(error.message || 'Erro ao deletar usuário');
+      toast.error(error.message || 'Erro ao deletar usuário');
       setDeleteConfirmOpen(false);
       setUserToDelete(null);
     }
@@ -416,18 +443,79 @@ export function AdminDashboard() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('A imagem deve ter no máximo 2MB.');
+      toast.error('A imagem deve ter no máximo 2MB.');
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      alert('Selecione um arquivo de imagem válido.');
+      toast.error('Selecione um arquivo de imagem válido.');
       return;
     }
 
     const resizedFile = await resizeImage(file);
     setBlogImages({ ...blogImages, [imageKey]: resizedFile });
     setBlogImagePreviews({ ...blogImagePreviews, [imageKey]: URL.createObjectURL(resizedFile) });
+  };
+
+  const handleBlogImagesMultipleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newImages: {image?: File, image2?: File, image3?: File} = { ...blogImages };
+    const newPreviews: {image?: string, image2?: string, image3?: string} = { ...blogImagePreviews };
+    let fileIndex = 0;
+
+    const availableSlots: ('image' | 'image2' | 'image3')[] = [];
+    if (!newImages.image && !newPreviews.image) availableSlots.push('image');
+    if (!newImages.image2 && !newPreviews.image2) availableSlots.push('image2');
+    if (!newImages.image3 && !newPreviews.image3) availableSlots.push('image3');
+
+    for (let i = 0; i < Math.min(files.length, availableSlots.length); i++) {
+      const file = files[i];
+      const imageKey = availableSlots[fileIndex];
+
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error(`A imagem ${i + 1} deve ter no máximo 2MB.`);
+        continue;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        toast.error(`A imagem ${i + 1} não é válida.`);
+        continue;
+      }
+
+      const resizedFile = await resizeImage(file);
+      newImages[imageKey] = resizedFile;
+      newPreviews[imageKey] = URL.createObjectURL(resizedFile);
+      
+      if (isBlogEditModalOpen && removedImages.has(imageKey)) {
+        const newRemoved = new Set(removedImages);
+        newRemoved.delete(imageKey);
+        setRemovedImages(newRemoved);
+      }
+      
+      fileIndex++;
+    }
+
+    setBlogImages(newImages);
+    setBlogImagePreviews(newPreviews);
+    
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (imageKey: 'image' | 'image2' | 'image3') => {
+    const newImages = { ...blogImages };
+    const newPreviews = { ...blogImagePreviews };
+    delete newImages[imageKey];
+    delete newPreviews[imageKey];
+    setBlogImages(newImages);
+    setBlogImagePreviews(newPreviews);
+    
+    if (isBlogEditModalOpen && blogToEdit) {
+      const newRemoved = new Set(removedImages);
+      newRemoved.add(imageKey);
+      setRemovedImages(newRemoved);
+    }
   };
 
   const handleCreateBlog = async (e: React.FormEvent) => {
@@ -442,13 +530,14 @@ export function AdminDashboard() {
 
       await createBlog({ ...blogFormData, authorId }, blogImages);
       setIsBlogModalOpen(false);
+      toast.success(`Blog "${blogFormData.title}" criado com sucesso`);
       setBlogFormData({ title: '', content: '', authorId: '', category: 'tecnologia', isPublished: true, link: '' });
       setBlogImages({});
       setBlogImagePreviews({});
       const blogsData = await fetchBlogs();
       setBlogs(blogsData);
     } catch (error: any) {
-      alert(error.message || 'Erro ao criar blog');
+      toast.error(error.message || 'Erro ao criar blog');
     } finally {
       setCreatingBlog(false);
     }
@@ -462,13 +551,15 @@ export function AdminDashboard() {
       authorId: blog.authorId,
       category: blog.category as any,
       isPublished: blog.isPublished,
-      link: blog.link || ''
+      link: (blog.link && blog.link !== 'true' && blog.link.trim() !== '') ? blog.link : ''
     });
     setBlogImagePreviews({
-      image: blog.image,
-      image2: blog.image2,
-      image3: blog.image3
+      image: blog.image || '',
+      image2: blog.image2 || '',
+      image3: blog.image3 || ''
     });
+    setBlogImages({});
+    setRemovedImages(new Set());
     setIsBlogEditModalOpen(true);
   };
 
@@ -478,16 +569,18 @@ export function AdminDashboard() {
     
     setEditingBlog(true);
     try {
-      await updateBlog(blogToEdit._id, blogFormData, blogImages);
+      await updateBlog(blogToEdit._id, { ...blogFormData, authorId: blogToEdit.authorId }, blogImages, removedImages);
       setIsBlogEditModalOpen(false);
       setBlogToEdit(null);
+      toast.success(`Blog "${blogFormData.title}" atualizado com sucesso`);
       setBlogFormData({ title: '', content: '', authorId: '', category: 'tecnologia', isPublished: true, link: '' });
       setBlogImages({});
       setBlogImagePreviews({});
+      setRemovedImages(new Set());
       const blogsData = await fetchBlogs();
       setBlogs(blogsData);
     } catch (error: any) {
-      alert(error.message || 'Erro ao atualizar blog');
+      toast.error(error.message || 'Erro ao atualizar blog');
     } finally {
       setEditingBlog(false);
     }
@@ -507,8 +600,9 @@ export function AdminDashboard() {
       setBlogs(blogsData);
       setBlogDeleteConfirmOpen(false);
       setBlogToDelete(null);
+      toast.success('Blog excluído com sucesso');
     } catch (error: any) {
-      alert(error.message || 'Erro ao deletar blog');
+      toast.error(error.message || 'Erro ao deletar blog');
       setBlogDeleteConfirmOpen(false);
       setBlogToDelete(null);
     }
@@ -624,6 +718,7 @@ export function AdminDashboard() {
                             <SelectItem value="passageiro">Passageiro</SelectItem>
                             <SelectItem value="motorista">Motorista</SelectItem>
                             <SelectItem value="anunciante">Anunciante</SelectItem>
+                            <SelectItem value="admin">Administrador</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -710,6 +805,7 @@ export function AdminDashboard() {
                             <SelectItem value="passageiro">Passageiro</SelectItem>
                             <SelectItem value="motorista">Motorista</SelectItem>
                             <SelectItem value="anunciante">Anunciante</SelectItem>
+                            <SelectItem value="admin">Administrador</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -764,8 +860,20 @@ export function AdminDashboard() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1 h-8 text-xs text-red-500 hover:text-red-600"
+                            className="flex-1 h-8 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
                             onClick={() => handleDeleteClick(user._id)}
+                            disabled={(() => {
+                              const token = localStorage.getItem("token");
+                              if (token) {
+                                try {
+                                  const decodedToken = jwtDecode<any>(token);
+                                  return decodedToken.sub === user._id;
+                                } catch {
+                                  return false;
+                                }
+                              }
+                              return false;
+                            })()}
                           >
                             <Trash2 className="w-3 h-3 mr-1" />
                             Excluir
@@ -802,8 +910,32 @@ export function AdminDashboard() {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="h-8 w-8 text-red-500 hover:text-red-600"
+                                className="h-8 w-8 text-red-500 hover:text-red-600 disabled:opacity-50"
                                 onClick={() => handleDeleteClick(user._id)}
+                                disabled={(() => {
+                                  const token = localStorage.getItem("token");
+                                  if (token) {
+                                    try {
+                                      const decodedToken = jwtDecode<any>(token);
+                                      return decodedToken.sub === user._id;
+                                    } catch {
+                                      return false;
+                                    }
+                                  }
+                                  return false;
+                                })()}
+                                title={(() => {
+                                  const token = localStorage.getItem("token");
+                                  if (token) {
+                                    try {
+                                      const decodedToken = jwtDecode<any>(token);
+                                      if (decodedToken.sub === user._id) {
+                                        return 'Você não pode excluir sua própria conta';
+                                      }
+                                    } catch {}
+                                  }
+                                  return 'Excluir usuário';
+                                })()}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1020,9 +1152,23 @@ export function AdminDashboard() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Dialog open={isBlogModalOpen} onOpenChange={setIsBlogModalOpen}>
+                <Dialog open={isBlogModalOpen} onOpenChange={(open) => {
+                  setIsBlogModalOpen(open);
+                  if (!open) {
+                    setBlogFormData({ title: '', content: '', authorId: '', category: 'tecnologia', isPublished: true, link: '' });
+                    setBlogImages({});
+                    setBlogImagePreviews({});
+                    setRemovedImages(new Set());
+                  }
+                }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700 h-9 text-sm">
+                  <Button className="bg-green-600 hover:bg-green-700 h-9 text-sm" onClick={() => {
+                    setBlogFormData({ title: '', content: '', authorId: '', category: 'tecnologia', isPublished: true, link: '' });
+                    setBlogImages({});
+                    setBlogImagePreviews({});
+                    setRemovedImages(new Set());
+                    setBlogToEdit(null);
+                  }}>
                     <Plus className="w-4 h-4 mr-2" />
                     <span className="hidden sm:inline">Nova Postagem</span>
                   </Button>
@@ -1072,45 +1218,69 @@ export function AdminDashboard() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="blogImage">Imagem 1 (obrigatória)</Label>
+                        <Label htmlFor="blogImages">Imagens (selecione até 3 imagens)</Label>
                         <Input 
-                          id="blogImage" 
+                          id="blogImages" 
                           type="file" 
                           accept="image/*" 
+                          multiple
                           className="bg-input-background"
-                          onChange={(e) => handleBlogImageChange(e, 'image')}
-                          required
+                          onChange={handleBlogImagesMultipleChange}
+                          required={!blogImagePreviews.image}
                         />
-                        {blogImagePreviews.image && (
-                          <img src={blogImagePreviews.image} alt="Preview" className="w-full h-32 object-cover rounded" />
-                        )}
+                        <p className="text-xs text-muted-foreground">Selecione até 3 imagens de uma vez</p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="blogImage2">Imagem 2 (opcional)</Label>
-                        <Input 
-                          id="blogImage2" 
-                          type="file" 
-                          accept="image/*" 
-                          className="bg-input-background"
-                          onChange={(e) => handleBlogImageChange(e, 'image2')}
-                        />
-                        {blogImagePreviews.image2 && (
-                          <img src={blogImagePreviews.image2} alt="Preview" className="w-full h-32 object-cover rounded" />
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="blogImage3">Imagem 3 (opcional)</Label>
-                        <Input 
-                          id="blogImage3" 
-                          type="file" 
-                          accept="image/*" 
-                          className="bg-input-background"
-                          onChange={(e) => handleBlogImageChange(e, 'image3')}
-                        />
-                        {blogImagePreviews.image3 && (
-                          <img src={blogImagePreviews.image3} alt="Preview" className="w-full h-32 object-cover rounded" />
-                        )}
-                      </div>
+                      {blogImagePreviews.image && (
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Label>Imagem 1</Label>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-0 right-0"
+                              onClick={() => handleRemoveImage('image')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <img src={blogImagePreviews.image} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                          </div>
+                        </div>
+                      )}
+                      {blogImagePreviews.image2 && (
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Label>Imagem 2</Label>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-0 right-0"
+                              onClick={() => handleRemoveImage('image2')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <img src={blogImagePreviews.image2} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                          </div>
+                        </div>
+                      )}
+                      {blogImagePreviews.image3 && (
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Label>Imagem 3</Label>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-0 right-0"
+                              onClick={() => handleRemoveImage('image3')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <img src={blogImagePreviews.image3} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                          </div>
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label htmlFor="blogLink">Link (opcional)</Label>
                         <Input 
@@ -1313,44 +1483,68 @@ export function AdminDashboard() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editBlogImage">Imagem 1</Label>
+                <Label htmlFor="editBlogImages">Imagens (selecione até 3 imagens para substituir)</Label>
                 <Input 
-                  id="editBlogImage" 
+                  id="editBlogImages" 
                   type="file" 
                   accept="image/*" 
+                  multiple
                   className="bg-input-background"
-                  onChange={(e) => handleBlogImageChange(e, 'image')}
+                  onChange={handleBlogImagesMultipleChange}
                 />
-                {blogImagePreviews.image && (
-                  <img src={blogImagePreviews.image} alt="Preview" className="w-full h-32 object-cover rounded" />
-                )}
+                <p className="text-xs text-muted-foreground">Selecione até 3 imagens de uma vez para substituir</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editBlogImage2">Imagem 2</Label>
-                <Input 
-                  id="editBlogImage2" 
-                  type="file" 
-                  accept="image/*" 
-                  className="bg-input-background"
-                  onChange={(e) => handleBlogImageChange(e, 'image2')}
-                />
-                {blogImagePreviews.image2 && (
-                  <img src={blogImagePreviews.image2} alt="Preview" className="w-full h-32 object-cover rounded" />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editBlogImage3">Imagem 3</Label>
-                <Input 
-                  id="editBlogImage3" 
-                  type="file" 
-                  accept="image/*" 
-                  className="bg-input-background"
-                  onChange={(e) => handleBlogImageChange(e, 'image3')}
-                />
-                {blogImagePreviews.image3 && (
-                  <img src={blogImagePreviews.image3} alt="Preview" className="w-full h-32 object-cover rounded" />
-                )}
-              </div>
+              {blogImagePreviews.image && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Label>Imagem 1</Label>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-0 right-0"
+                      onClick={() => handleRemoveImage('image')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <img src={blogImagePreviews.image} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                  </div>
+                </div>
+              )}
+              {blogImagePreviews.image2 && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Label>Imagem 2</Label>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-0 right-0"
+                      onClick={() => handleRemoveImage('image2')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <img src={blogImagePreviews.image2} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                  </div>
+                </div>
+              )}
+              {blogImagePreviews.image3 && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Label>Imagem 3</Label>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-0 right-0"
+                      onClick={() => handleRemoveImage('image3')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <img src={blogImagePreviews.image3} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="editBlogLink">Link (opcional)</Label>
                 <Input 
@@ -1381,6 +1575,7 @@ export function AdminDashboard() {
                 setBlogFormData({ title: '', content: '', authorId: '', category: 'tecnologia', isPublished: true, link: '' });
                 setBlogImages({});
                 setBlogImagePreviews({});
+                setRemovedImages(new Set());
               }}>Cancelar</Button>
               <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={editingBlog}>
                 {editingBlog ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}

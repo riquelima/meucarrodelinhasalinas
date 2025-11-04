@@ -18,6 +18,7 @@ import { RideCalculatorScreen } from './components/RideCalculatorScreen';
 
 import SignupSuccessPage  from './sucess';
 import Loading from './loading';
+import { Toaster } from './components/ui/sonner';
 
 type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
 type Screen =
@@ -193,6 +194,7 @@ export default function App() {
         {currentScreen === 'calculator' && <RideCalculatorScreen userType={userType} />}
         {currentScreen === 'profile' && <ProfileScreen onLogout={handleLogout} theme={theme} onThemeChange={setTheme} />}
       </div>
+      <Toaster />
     </div>
   );
 }

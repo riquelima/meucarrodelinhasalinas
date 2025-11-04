@@ -35,8 +35,12 @@ export class BlogService {
       imageUrl3 = uploadResult.secure_url;
     }
 
+    // Se isPublished não for definido, padrão é true (publicado)
+    const isPublished = createBlogDto.isPublished !== undefined ? createBlogDto.isPublished : true;
+
     const created = new this.blogModel({
       ...createBlogDto,
+      isPublished,
       image: imageUrl,
       image2: imageUrl2,
       image3: imageUrl3,
@@ -76,35 +80,44 @@ export class BlogService {
     return this.blogModel.countDocuments();
   }
 
-  async update(id: string, updateBlogDto: UpdateBlogDto, file?: Express.Multer.File, file2?: Express.Multer.File, file3?: Express.Multer.File) {
+  async update(id: string, updateBlogDto: UpdateBlogDto, file?: Express.Multer.File, file2?: Express.Multer.File, file3?: Express.Multer.File, removeImage?: boolean, removeImage2?: boolean, removeImage3?: boolean) {
     const blog = await this.blogModel.findById(id);
     if (!blog) throw new NotFoundException('Blog não encontrado');
 
-    let imageUrl = blog.image;
-    let imageUrl2 = blog.image2
-    let imageUrl3 = blog.image3
+    let imageUrl: string = blog.image;
+    let imageUrl2: string | null = blog.image2 || null;
+    let imageUrl3: string | null = blog.image3 || null;
 
     if (file) {
       const uploadResult = await this.cloudinaryService.uploadImage(file, 'blog-images');
       imageUrl = uploadResult.secure_url;
     }
 
-    if (file2) {
+    if (removeImage2) {
+      imageUrl2 = null;
+    } else if (file2) {
       const uploadResult = await this.cloudinaryService.uploadImage(file2, 'blog-images');
       imageUrl2 = uploadResult.secure_url;
     }
 
-    if (file3) {
+    if (removeImage3) {
+      imageUrl3 = null;
+    } else if (file3) {
       const uploadResult = await this.cloudinaryService.uploadImage(file3, 'blog-images');
       imageUrl3 = uploadResult.secure_url;
     }
 
-    Object.assign(blog, {
-      ...updateBlogDto,
-      image: imageUrl,
-      image2: imageUrl2,
-      image3: imageUrl3
-    });
+    if (updateBlogDto.title) blog.title = updateBlogDto.title;
+    if (updateBlogDto.content) blog.content = updateBlogDto.content;
+    if (updateBlogDto.category) blog.category = updateBlogDto.category;
+    if (updateBlogDto.isPublished !== undefined) blog.isPublished = updateBlogDto.isPublished;
+    if (updateBlogDto.link !== undefined) {
+      blog.link = updateBlogDto.link === 'true' ? '' : updateBlogDto.link;
+    }
+    
+    blog.image = imageUrl;
+    (blog as any).image2 = imageUrl2;
+    (blog as any).image3 = imageUrl3;
 
     return blog.save();
   }

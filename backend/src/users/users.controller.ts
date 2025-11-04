@@ -65,7 +65,8 @@ export class UsersController {
     }
 
     @Delete(':id')
-    async deleteById(@Param('id') id: string){
-        return this.usersService.deleteById(id) 
+    async deleteById(@Param('id') id: string, @Req() req: any){
+        const currentUserId = req.user?.userId || req.user?.sub;
+        return this.usersService.deleteById(id, currentUserId) 
     }
 }

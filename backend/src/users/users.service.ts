@@ -208,7 +208,12 @@ export class UsersService {
         return user.save();
     }
 
-    async deleteById(id: string) {
+    async deleteById(id: string, currentUserId?: string) {
+        // Impede que o usuário delete a própria conta
+        if (currentUserId && id === currentUserId) {
+          throw new ForbiddenException('Você não pode excluir sua própria conta');
+        }
+        
         const deleted = await this.userModel.findByIdAndDelete(id).exec();
         
         if (!deleted) {
