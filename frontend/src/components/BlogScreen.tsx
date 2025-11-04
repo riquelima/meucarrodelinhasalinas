@@ -39,7 +39,7 @@ export function BlogScreen() {
 
         if (!res.ok) throw new Error("Erro ao buscar posts");
 
-        const data = await res.json();
+        const data = (await res.json()).filter((blog: any) => blog.isPublished);
         setPosts(data);
       } catch (err: any) {
         setError(err.message);
