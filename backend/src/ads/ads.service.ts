@@ -37,7 +37,9 @@ export class AdsService {
             imageUrl = uploadResult.secure_url;
         }
 
-        const ad = new this.adsModel({ ...createAdsDto, userId, image: imageUrl });
+        const isActive = createAdsDto.isActive !== undefined ? createAdsDto.isActive : true;
+
+        const ad = new this.adsModel({ ...createAdsDto, userId, image: imageUrl, isActive });
         return ad.save();
     }
 
@@ -131,7 +133,7 @@ export class AdsService {
     }
 
     async getAllAds() {
-        return this.adsModel.find().lean();
+        return this.adsModel.find().sort({ createdAt: -1 }).lean();
     }
 
     async deleteById(id: string) {

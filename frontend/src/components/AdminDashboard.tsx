@@ -52,6 +52,26 @@ interface BlogFilters {
   search: string;
 }
 
+interface Ad {
+  _id: string;
+  nameCompany: string;
+  numberPhone: string;
+  description: string;
+  image: string;
+  category: string;
+  views: number;
+  isActive: boolean;
+  userId: string;
+  createdAt?: { $date: string } | string;
+  updatedAt?: { $date: string } | string;
+}
+
+interface AdFilters {
+  status: string;
+  category: string;
+  search: string;
+}
+
 export function AdminDashboard() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAdModalOpen, setIsAdModalOpen] = useState(false);
@@ -70,6 +90,29 @@ export function AdminDashboard() {
     search: ''
   });
   const [blogLoading, setBlogLoading] = useState(true);
+  const [ads, setAds] = useState<Ad[]>([]);
+  const [filteredAds, setFilteredAds] = useState<Ad[]>([]);
+  const [adFilters, setAdFilters] = useState<AdFilters>({
+    status: 'all',
+    category: 'all',
+    search: ''
+  });
+  const [adLoading, setAdLoading] = useState(true);
+  const [isAdEditModalOpen, setIsAdEditModalOpen] = useState(false);
+  const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
+  const [creatingAd, setCreatingAd] = useState(false);
+  const [editingAd, setEditingAd] = useState(false);
+  const [adFormData, setAdFormData] = useState({
+    nameCompany: '',
+    numberPhone: '',
+    description: '',
+    category: 'Alimentação' as string,
+    isActive: true
+  });
+  const [adImage, setAdImage] = useState<File | null>(null);
+  const [adImagePreview, setAdImagePreview] = useState<string | null>(null);
+  const [adDeleteConfirmOpen, setAdDeleteConfirmOpen] = useState(false);
+  const [adToDelete, setAdToDelete] = useState<string | null>(null);
   const [isBlogEditModalOpen, setIsBlogEditModalOpen] = useState(false);
   const [blogToEdit, setBlogToEdit] = useState<Blog | null>(null);
   const [creatingBlog, setCreatingBlog] = useState(false);
@@ -276,6 +319,96 @@ export function AdminDashboard() {
     return await response.json();
   };
 
+  const fetchAds = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token não encontrado");
+
+    const response = await fetch('http://localhost:3000/ads', {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) throw new Error("Falha ao buscar anúncios");
+    return await response.json();
+  };
+
+  const createAd = async (adData: any, file: File | null, userId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token não encontrado");
+
+    const formData = new FormData();
+    formData.set('nameCompany', adData.nameCompany);
+    formData.set('numberPhone', adData.numberPhone);
+    formData.set('description', adData.description);
+    formData.set('category', adData.category);
+    formData.set('isActive', String(adData.isActive === true || adData.isActive === 'active'));
+    
+    if (file) formData.set('image', file);
+
+    const response = await fetch(`http://localhost:3000/ads/${userId}/anuncios`, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Falha ao criar anúncio");
+    }
+    return await response.json();
+  };
+
+  const updateAd = async (adId: string, adData: any, file: File | null) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token não encontrado");
+
+    const formData = new FormData();
+    if (adData.nameCompany) formData.set('nameCompany', adData.nameCompany);
+    if (adData.numberPhone) formData.set('numberPhone', adData.numberPhone);
+    if (adData.description) formData.set('description', adData.description);
+    if (adData.category) formData.set('category', adData.category);
+    if (adData.isActive !== undefined) {
+      const isActiveValue = adData.isActive === true || adData.isActive === 'active';
+      formData.set('isActive', String(isActiveValue));
+    }
+    
+    if (file) formData.set('image', file);
+
+    const response = await fetch(`http://localhost:3000/ads/${adId}`, {
+      method: 'PATCH',
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Falha ao atualizar anúncio");
+    }
+    return await response.json();
+  };
+
+  const deleteAd = async (adId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Token não encontrado");
+
+    const response = await fetch(`http://localhost:3000/ads/${adId}`, {
+      method: 'DELETE',
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) throw new Error("Falha ao deletar anúncio");
+    return await response.json();
+  };
+
   useEffect(() => {
     const loadUsers = async () => {
       try {
@@ -308,6 +441,23 @@ export function AdminDashboard() {
     };
 
     loadBlogs();
+  }, []);
+
+  useEffect(() => {
+    const loadAds = async () => {
+      try {
+        setAdLoading(true);
+        const adsData = await fetchAds();
+        setAds(adsData);
+        setFilteredAds(adsData);
+      } catch (error) {
+        console.error('Erro ao carregar anúncios:', error);
+      } finally {
+        setAdLoading(false);
+      }
+    };
+
+    loadAds();
   }, []);
 
   useEffect(() => {
@@ -345,6 +495,29 @@ export function AdminDashboard() {
 
     setFilteredBlogs(filtered);
   }, [blogFilters, blogs]);
+
+  useEffect(() => {
+    let filtered = [...ads];
+
+    if (adFilters.status !== 'all') {
+      const isActive = adFilters.status === 'active';
+      filtered = filtered.filter(a => a.isActive === isActive);
+    }
+
+    if (adFilters.category !== 'all') {
+      filtered = filtered.filter(a => a.category === adFilters.category);
+    }
+
+    if (adFilters.search) {
+      const searchLower = adFilters.search.toLowerCase();
+      filtered = filtered.filter(a => 
+        a.nameCompany.toLowerCase().includes(searchLower) ||
+        a.description.toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredAds(filtered);
+  }, [adFilters, ads]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -608,17 +781,126 @@ export function AdminDashboard() {
     }
   };
 
+  const handleAdImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 2MB.');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem válido.');
+      return;
+    }
+
+    const resizedFile = await resizeImage(file);
+    setAdImage(resizedFile);
+    setAdImagePreview(URL.createObjectURL(resizedFile));
+  };
+
+  const handleRemoveAdImage = () => {
+    setAdImage(null);
+    setAdImagePreview(null);
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('55')) return digits;
+    return `55${digits}`;
+  };
+
+  const handleCreateAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingAd(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token não encontrado");
+      
+      const decodedToken = jwtDecode<any>(token);
+      const userId = decodedToken.sub;
+
+      const formattedPhone = formatPhoneNumber(adFormData.numberPhone);
+      await createAd({ ...adFormData, numberPhone: formattedPhone }, adImage, userId);
+      setIsAdModalOpen(false);
+      toast.success(`Anúncio "${adFormData.nameCompany}" criado com sucesso`);
+      setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
+      setAdImage(null);
+      setAdImagePreview(null);
+      const adsData = await fetchAds();
+      setAds(adsData);
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao criar anúncio');
+    } finally {
+      setCreatingAd(false);
+    }
+  };
+
+  const handleEditAd = (ad: Ad) => {
+    setAdToEdit(ad);
+    setAdFormData({
+      nameCompany: ad.nameCompany,
+      numberPhone: ad.numberPhone,
+      description: ad.description,
+      category: ad.category,
+      isActive: ad.isActive
+    });
+    setAdImagePreview(ad.image);
+    setAdImage(null);
+    setIsAdEditModalOpen(true);
+  };
+
+  const handleUpdateAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adToEdit) return;
+    
+    setEditingAd(true);
+    try {
+      const formattedPhone = formatPhoneNumber(adFormData.numberPhone);
+      await updateAd(adToEdit._id, { ...adFormData, numberPhone: formattedPhone }, adImage);
+      setIsAdEditModalOpen(false);
+      setAdToEdit(null);
+      toast.success(`Anúncio "${adFormData.nameCompany}" atualizado com sucesso`);
+      setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
+      setAdImage(null);
+      setAdImagePreview(null);
+      const adsData = await fetchAds();
+      setAds(adsData);
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar anúncio');
+    } finally {
+      setEditingAd(false);
+    }
+  };
+
+  const handleDeleteAdClick = (adId: string) => {
+    setAdToDelete(adId);
+    setAdDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteAdConfirm = async () => {
+    if (!adToDelete) return;
+    
+    try {
+      await deleteAd(adToDelete);
+      const adsData = await fetchAds();
+      setAds(adsData);
+      setAdDeleteConfirmOpen(false);
+      setAdToDelete(null);
+      toast.success('Anúncio excluído com sucesso');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao deletar anúncio');
+      setAdDeleteConfirmOpen(false);
+      setAdToDelete(null);
+    }
+  };
+
   const stats = [
     { label: "Total de Usuários", value: users.length.toString(), change: "+12%", icon: Users, color: "text-blue-500" },
-    { label: "Anúncios Ativos", value: "45", change: "+5%", icon: Megaphone, color: "text-purple-400" },
+    { label: "Anúncios Ativos", value: ads.filter(a => a.isActive).length.toString(), change: "+5%", icon: Megaphone, color: "text-purple-400" },
     { label: "Posts no Blog", value: blogs.length.toString(), change: "+3", icon: FileText, color: "text-green-500" },
     { label: "Mensagens Recebidas", value: "87", change: "+18%", icon: MessageSquare, color: "text-orange-500" },
-  ];
-
-  const ads = [
-    { id: 1, title: "Restaurante Sabor & Arte", advertiser: "Pedro Lima", status: "active", views: 12453, clicks: 834, budget: "R$ 500" },
-    { id: 2, title: "Academia FitLife", advertiser: "Julia Mendes", status: "active", views: 8721, clicks: 542, budget: "R$ 800" },
-    { id: 3, title: "Shopping Center Plaza", advertiser: "Ricardo Souza", status: "paused", views: 5634, clicks: 421, budget: "R$ 300" },
   ];
 
 
@@ -970,7 +1252,7 @@ export function AdminDashboard() {
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
                         <Label htmlFor="filterAdStatus">Status</Label>
-                        <Select>
+                        <Select value={adFilters.status} onValueChange={(value) => setAdFilters({...adFilters, status: value})}>
                           <SelectTrigger className="bg-input-background">
                             <SelectValue placeholder="Todos os status" />
                           </SelectTrigger>
@@ -982,34 +1264,39 @@ export function AdminDashboard() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="filterAdViews">Visualizações Mínimas</Label>
-                        <Input id="filterAdViews" type="number" placeholder="Ex: 1000" className="bg-input-background" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="filterAdClicks">Cliques Mínimos</Label>
-                        <Input id="filterAdClicks" type="number" placeholder="Ex: 100" className="bg-input-background" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="filterAdBudget">Orçamento</Label>
-                        <Select>
+                        <Label htmlFor="filterAdCategory">Categoria</Label>
+                        <Select value={adFilters.category} onValueChange={(value) => setAdFilters({...adFilters, category: value})}>
                           <SelectTrigger className="bg-input-background">
-                            <SelectValue placeholder="Qualquer orçamento" />
+                            <SelectValue placeholder="Todas as categorias" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Todos</SelectItem>
-                            <SelectItem value="low">Até R$ 300</SelectItem>
-                            <SelectItem value="medium">R$ 300 - R$ 600</SelectItem>
-                            <SelectItem value="high">Acima de R$ 600</SelectItem>
+                            <SelectItem value="all">Todas</SelectItem>
+                            <SelectItem value="Alimentação">Alimentação</SelectItem>
+                            <SelectItem value="Saúde & Bem-estar">Saúde & Bem-estar</SelectItem>
+                            <SelectItem value="Educação">Educação</SelectItem>
+                            <SelectItem value="Compras">Compras</SelectItem>
+                            <SelectItem value="Serviços">Serviços</SelectItem>
+                            <SelectItem value="Entretenimento">Entretenimento</SelectItem>
+                            <SelectItem value="Outros">Outros</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="filterAdSearch">Buscar por título ou anunciante</Label>
-                        <Input id="filterAdSearch" placeholder="Digite para buscar..." className="bg-input-background" />
+                        <Label htmlFor="filterAdSearch">Buscar por nome ou descrição</Label>
+                        <Input 
+                          id="filterAdSearch" 
+                          placeholder="Digite para buscar..." 
+                          className="bg-input-background"
+                          value={adFilters.search}
+                          onChange={(e) => setAdFilters({...adFilters, search: e.target.value})}
+                        />
                       </div>
                     </div>
                     <DialogFooter className="flex-col sm:flex-row gap-2">
-                      <Button variant="outline" onClick={() => setIsAdFilterModalOpen(false)} className="w-full sm:w-auto">
+                      <Button variant="outline" onClick={() => {
+                        setAdFilters({status: 'all', category: 'all', search: ''});
+                        setIsAdFilterModalOpen(false);
+                      }} className="w-full sm:w-auto">
                         Limpar Filtros
                       </Button>
                       <Button className="bg-purple-400 hover:bg-purple-500 w-full sm:w-auto" onClick={() => setIsAdFilterModalOpen(false)}>
@@ -1018,83 +1305,193 @@ export function AdminDashboard() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Dialog open={isAdModalOpen} onOpenChange={setIsAdModalOpen}>
+                <Dialog open={isAdModalOpen} onOpenChange={(open) => {
+                  setIsAdModalOpen(open);
+                  if (!open) {
+                    setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
+                    setAdImage(null);
+                    setAdImagePreview(null);
+                  }
+                }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-purple-400 hover:bg-purple-500 h-9 text-sm">
+                  <Button className="bg-purple-400 hover:bg-purple-500 h-9 text-sm" onClick={() => {
+                    setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
+                    setAdImage(null);
+                    setAdImagePreview(null);
+                    setAdToEdit(null);
+                  }}>
                     <Plus className="w-4 h-4 mr-2" />
                     <span className="hidden sm:inline">Adicionar</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-card border-border max-w-md">
+                <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="text-foreground">Criar Novo Anúncio</DialogTitle>
                     <DialogDescription>Configure um novo anúncio na plataforma</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="adTitle">Título do Anúncio</Label>
-                      <Input id="adTitle" placeholder="Nome do estabelecimento" className="bg-input-background" />
+                  <form onSubmit={handleCreateAd}>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="adNameCompany">Nome da Empresa *</Label>
+                        <Input 
+                          id="adNameCompany" 
+                          placeholder="Nome do estabelecimento" 
+                          className="bg-input-background"
+                          value={adFormData.nameCompany}
+                          onChange={(e) => setAdFormData({...adFormData, nameCompany: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adNumberPhone">Telefone/WhatsApp *</Label>
+                        <Input 
+                          id="adNumberPhone" 
+                          type="tel" 
+                          placeholder="(75) 99955-8190" 
+                          className="bg-input-background"
+                          value={adFormData.numberPhone}
+                          onChange={(e) => setAdFormData({...adFormData, numberPhone: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adCategory">Categoria *</Label>
+                        <Select value={adFormData.category} onValueChange={(value) => setAdFormData({...adFormData, category: value})}>
+                          <SelectTrigger className="bg-input-background">
+                            <SelectValue placeholder="Selecione a categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Alimentação">Alimentação</SelectItem>
+                            <SelectItem value="Saúde & Bem-estar">Saúde & Bem-estar</SelectItem>
+                            <SelectItem value="Educação">Educação</SelectItem>
+                            <SelectItem value="Compras">Compras</SelectItem>
+                            <SelectItem value="Serviços">Serviços</SelectItem>
+                            <SelectItem value="Entretenimento">Entretenimento</SelectItem>
+                            <SelectItem value="Outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adDescription">Descrição *</Label>
+                        <Textarea 
+                          id="adDescription" 
+                          placeholder="Descreva o anúncio..." 
+                          className="bg-input-background min-h-[100px]"
+                          value={adFormData.description}
+                          onChange={(e) => setAdFormData({...adFormData, description: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adImage">Imagem do Anúncio *</Label>
+                        <Input 
+                          id="adImage" 
+                          type="file" 
+                          accept="image/*" 
+                          className="bg-input-background"
+                          onChange={handleAdImageChange}
+                          required={!adImagePreview}
+                        />
+                        {adImagePreview && (
+                          <div className="relative">
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-0 right-0"
+                              onClick={handleRemoveAdImage}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <img src={adImagePreview} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adStatus">Status</Label>
+                        <Select value={adFormData.isActive ? 'active' : 'paused'} onValueChange={(value) => setAdFormData({...adFormData, isActive: value === 'active'})}>
+                          <SelectTrigger className="bg-input-background">
+                            <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Ativo</SelectItem>
+                            <SelectItem value="paused">Pausado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="adAdvertiser">Anunciante</Label>
-                      <Input id="adAdvertiser" placeholder="Nome do anunciante" className="bg-input-background" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="adImage">Imagem do Anúncio</Label>
-                      <Input id="adImage" type="file" accept="image/*" className="bg-input-background" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="adBudget">Orçamento</Label>
-                      <Input id="adBudget" placeholder="R$ 500,00" className="bg-input-background" />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAdModalOpen(false)}>Cancelar</Button>
-                    <Button className="bg-purple-400 hover:bg-purple-500" onClick={() => setIsAdModalOpen(false)}>Criar Anúncio</Button>
-                  </DialogFooter>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => {
+                        setIsAdModalOpen(false);
+                        setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
+                        setAdImage(null);
+                        setAdImagePreview(null);
+                      }}>Cancelar</Button>
+                      <Button type="submit" className="bg-purple-400 hover:bg-purple-500" disabled={creatingAd}>
+                        {creatingAd ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        Criar Anúncio
+                      </Button>
+                    </DialogFooter>
+                  </form>
                 </DialogContent>
               </Dialog>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              {ads.map((ad) => (
-                <Card key={ad.id} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <h3 className="text-foreground truncate">{ad.title}</h3>
-                          {ad.status === 'active' ? (
-                            <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Ativo</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs flex-shrink-0">Pausado</Badge>
-                          )}
+            {adLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredAds.map((ad) => (
+                  <Card key={ad._id} className="bg-card border-border">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3 className="text-foreground truncate">{ad.nameCompany}</h3>
+                            {ad.isActive ? (
+                              <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Ativo</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs flex-shrink-0">Pausado</Badge>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground text-xs mb-2">{ad.description}</div>
+                          <div className="flex flex-wrap gap-3 text-xs">
+                            <div className="flex items-center gap-1">
+                              <Eye className="w-3 h-3 text-blue-500" />
+                              <span className="text-muted-foreground">{ad.views?.toLocaleString() || 0} visualizações</span>
+                            </div>
+                            <div className="text-purple-400">{ad.category}</div>
+                          </div>
                         </div>
-                        <div className="text-muted-foreground text-xs mb-2">Por {ad.advertiser}</div>
-                        <div className="flex flex-wrap gap-3 text-xs">
-                          <div className="flex items-center gap-1">
-                            <Eye className="w-3 h-3 text-blue-500" />
-                            <span className="text-muted-foreground">{ad.views.toLocaleString()} visualizações</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MousePointerClick className="w-3 h-3 text-green-500" />
-                            <span className="text-muted-foreground">{ad.clicks} cliques</span>
-                          </div>
-                          <div className="text-purple-400">{ad.budget}</div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs"
+                            onClick={() => handleEditAd(ad)}
+                          >
+                            <Edit className="w-3 h-3 mr-1" />
+                            Editar
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs text-red-500 hover:text-red-600"
+                            onClick={() => handleDeleteAdClick(ad._id)}
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Excluir
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="h-8 text-xs text-red-500">
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          Excluir
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Blog Tab */}
@@ -1434,6 +1831,148 @@ export function AdminDashboard() {
               Excluir
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={adDeleteConfirmOpen} onOpenChange={setAdDeleteConfirmOpen}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir este anúncio? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setAdDeleteConfirmOpen(false);
+                setAdToDelete(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
+              onClick={handleDeleteAdConfirm}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAdEditModalOpen} onOpenChange={setIsAdEditModalOpen}>
+        <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar Anúncio</DialogTitle>
+            <DialogDescription>Edite as informações do anúncio</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateAd}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="editAdNameCompany">Nome da Empresa *</Label>
+                <Input 
+                  id="editAdNameCompany" 
+                  placeholder="Nome do estabelecimento" 
+                  className="bg-input-background"
+                  value={adFormData.nameCompany}
+                  onChange={(e) => setAdFormData({...adFormData, nameCompany: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAdNumberPhone">Telefone/WhatsApp *</Label>
+                <Input 
+                  id="editAdNumberPhone" 
+                  type="tel" 
+                  placeholder="(75) 99955-8190" 
+                  className="bg-input-background"
+                  value={adFormData.numberPhone}
+                  onChange={(e) => setAdFormData({...adFormData, numberPhone: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAdCategory">Categoria *</Label>
+                <Select value={adFormData.category} onValueChange={(value) => setAdFormData({...adFormData, category: value})}>
+                  <SelectTrigger className="bg-input-background">
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Alimentação">Alimentação</SelectItem>
+                    <SelectItem value="Saúde & Bem-estar">Saúde & Bem-estar</SelectItem>
+                    <SelectItem value="Educação">Educação</SelectItem>
+                    <SelectItem value="Compras">Compras</SelectItem>
+                    <SelectItem value="Serviços">Serviços</SelectItem>
+                    <SelectItem value="Entretenimento">Entretenimento</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAdDescription">Descrição *</Label>
+                <Textarea 
+                  id="editAdDescription" 
+                  placeholder="Descreva o anúncio..." 
+                  className="bg-input-background min-h-[100px]"
+                  value={adFormData.description}
+                  onChange={(e) => setAdFormData({...adFormData, description: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAdImage">Imagem do Anúncio</Label>
+                <Input 
+                  id="editAdImage" 
+                  type="file" 
+                  accept="image/*" 
+                  className="bg-input-background"
+                  onChange={handleAdImageChange}
+                />
+                {adImagePreview && (
+                  <div className="relative">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-0 right-0"
+                      onClick={handleRemoveAdImage}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <img src={adImagePreview} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAdStatus">Status</Label>
+                <Select value={adFormData.isActive ? 'active' : 'paused'} onValueChange={(value) => setAdFormData({...adFormData, isActive: value === 'active'})}>
+                  <SelectTrigger className="bg-input-background">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="paused">Pausado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => {
+                setIsAdEditModalOpen(false);
+                setAdToEdit(null);
+                setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
+                setAdImage(null);
+                setAdImagePreview(null);
+              }}>Cancelar</Button>
+              <Button type="submit" className="bg-purple-400 hover:bg-purple-500" disabled={editingAd}>
+                {editingAd ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
