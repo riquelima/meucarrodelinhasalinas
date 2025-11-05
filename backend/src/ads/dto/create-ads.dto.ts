@@ -1,4 +1,5 @@
 import { IsString, IsEnum, IsBoolean, IsOptional, IsUrl, IsNotEmpty } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AdsCategory } from '../schemas/ads.schema';
 
@@ -31,6 +32,11 @@ export class CreateAdsDto {
 
   @ApiPropertyOptional({ example: true, description: 'Define se o anúncio está ativo' })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   @IsBoolean({ message: 'O isActive deve ser booleano' })
   isActive?: boolean;
 

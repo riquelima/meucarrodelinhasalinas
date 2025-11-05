@@ -94,16 +94,19 @@ export class BlogController {
             image2?: Express.Multer.File[];
             image3?: Express.Multer.File[];
         },
-        @Body() updateBlogDto: UpdateBlogDto,
+        @Body() updateBlogDto: UpdateBlogDto & { removeImage?: string; removeImage2?: string; removeImage3?: string },
     ) {
         const file = files.image?.[0];
         const file2 = files.image2?.[0];
         const file3 = files.image3?.[0];
 
-        // 👇 No update, nenhuma imagem é obrigatória.
-        // Se o usuário quiser trocar alguma imagem, basta enviar.
-        // Se não enviar nada, mantém as antigas no serviço.
-        return this.blogService.update(id, updateBlogDto, file, file2, file3);
+        const removeImage = updateBlogDto.removeImage === 'true';
+        const removeImage2 = updateBlogDto.removeImage2 === 'true';
+        const removeImage3 = updateBlogDto.removeImage3 === 'true';
+
+        const { removeImage: _, removeImage2: __, removeImage3: ___, ...dto } = updateBlogDto;
+
+        return this.blogService.update(id, dto, file, file2, file3, removeImage, removeImage2, removeImage3);
     }
 
 
@@ -117,5 +120,29 @@ export class BlogController {
     @Delete(':id')
     async deleteById(@Param('id') id: string) {
         return this.blogService.deleteById(id);
+    }
+
+    @Get('stats/monthly-growth')
+    @ApiOperation({ summary: 'Retorna o crescimento mensal de posts no blog' })
+    async getMonthlyGrowth() {
+        return this.blogService.getMonthlyGrowth();
+    }
+
+    @Get('stats/chart-data')
+    @ApiOperation({ summary: 'Retorna dados do gráfico dos últimos 4 meses' })
+    async getChartData() {
+        return this.blogService.getChartData();
+    }
+
+    @Get('stats/total-views')
+    @ApiOperation({ summary: 'Retorna o total de visualizações de todos os blogs' })
+    async getTotalViews() {
+        return this.blogService.getTotalViews();
+    }
+
+    @Get('stats/views-monthly-growth')
+    @ApiOperation({ summary: 'Retorna o crescimento mensal de visualizações' })
+    async getViewsMonthlyGrowth() {
+        return this.blogService.getViewsMonthlyGrowth();
     }
 }

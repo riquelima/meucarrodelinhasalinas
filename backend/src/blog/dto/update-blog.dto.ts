@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { BlogCategory } from '../schemas/blog.schema';
 
 export class UpdateBlogDto {
@@ -28,6 +29,11 @@ export class UpdateBlogDto {
   link?: string;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   @IsBoolean()
   isPublished?: boolean;
 

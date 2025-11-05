@@ -66,7 +66,20 @@ export class UsersController {
     }
 
     @Delete(':id')
-    async deleteById(@Param('id') id: string){
-        return this.usersService.deleteById(id) 
+    async deleteById(@Param('id') id: string, @Req() req: any){
+        const currentUserId = req.user?.userId || req.user?.sub;
+        return this.usersService.deleteById(id, currentUserId) 
+    }
+
+    @Get('stats/monthly-growth')
+    @ApiOperation({ summary: 'Retorna o crescimento mensal de usuários' })
+    async getMonthlyGrowth() {
+        return this.usersService.getMonthlyGrowth();
+    }
+
+    @Get('stats/chart-data')
+    @ApiOperation({ summary: 'Retorna dados do gráfico dos últimos 4 meses' })
+    async getChartData() {
+        return this.usersService.getChartData();
     }
 }

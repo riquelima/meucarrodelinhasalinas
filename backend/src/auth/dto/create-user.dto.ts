@@ -13,6 +13,7 @@ export enum UserRole {
   PASSAGEIRO = 'passageiro',
   MOTORISTA = 'motorista',
   ANUNCIANTE = 'anunciante',
+  ADMIN = 'admin',
 }
 
 export class CreateUserDto {

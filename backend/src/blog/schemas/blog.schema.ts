@@ -29,16 +29,16 @@ export class Blog extends Document {
     @Prop({ required: true })
     image: string;
 
-    @Prop({ default: ''})
-    image2: string;
+    @Prop({ default: null, type: String })
+    image2?: string | null;
 
-    @Prop({ default: '' })
-    image3: string;
+    @Prop({ default: null, type: String })
+    image3?: string | null;
 
     @Prop({ default: true })
     isPublished: boolean;
 
-    @Prop({ default: true })
+    @Prop({ default: '' })
     link: string;
 
 }

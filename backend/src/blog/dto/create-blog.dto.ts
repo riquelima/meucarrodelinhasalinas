@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { BlogCategory } from '../schemas/blog.schema';
 
 export class CreateBlogDto {
@@ -24,6 +25,11 @@ export class CreateBlogDto {
   
   @ApiProperty({ required: false, description: 'Indica se o blog está publicado' })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   @IsBoolean()
   isPublished?: boolean;
 

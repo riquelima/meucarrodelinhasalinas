@@ -35,8 +35,12 @@ export class BlogService {
       imageUrl3 = uploadResult.secure_url;
     }
 
+    // Se isPublished não for definido, padrão é true (publicado)
+    const isPublished = createBlogDto.isPublished !== undefined ? createBlogDto.isPublished : true;
+
     const created = new this.blogModel({
       ...createBlogDto,
+      isPublished,
       image: imageUrl,
       image2: imageUrl2,
       image3: imageUrl3,
@@ -76,35 +80,101 @@ export class BlogService {
     return this.blogModel.countDocuments();
   }
 
-  async update(id: string, updateBlogDto: UpdateBlogDto, file?: Express.Multer.File, file2?: Express.Multer.File, file3?: Express.Multer.File) {
+  async getTotalViews() {
+    const result = await this.blogModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalViews: { $sum: '$views' }
+        }
+      }
+    ]);
+
+    return result.length > 0 ? result[0].totalViews : 0;
+  }
+
+  async getViewsMonthlyGrowth() {
+    const now = new Date();
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    const currentMonthTotal = await this.blogModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalViews: { $sum: '$views' }
+        }
+      }
+    ]);
+
+    const previousMonthTotal = await this.blogModel.aggregate([
+      {
+        $match: {
+          createdAt: { $lte: previousMonthEnd }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalViews: { $sum: '$views' }
+        }
+      }
+    ]);
+
+    const currentTotal = currentMonthTotal.length > 0 ? currentMonthTotal[0].totalViews : 0;
+    const previousTotal = previousMonthTotal.length > 0 ? previousMonthTotal[0].totalViews : 0;
+
+    let growth = 0;
+    if (previousTotal > 0) {
+      growth = ((currentTotal - previousTotal) / previousTotal) * 100;
+    } else if (previousTotal === 0 && currentTotal > 0) {
+      growth = 0; // Não há dados anteriores para comparar
+    }
+
+    return {
+      currentMonth: currentTotal,
+      previousMonth: previousTotal,
+      growth: Math.round(growth * 100) / 100
+    };
+  }
+
+  async update(id: string, updateBlogDto: UpdateBlogDto, file?: Express.Multer.File, file2?: Express.Multer.File, file3?: Express.Multer.File, removeImage?: boolean, removeImage2?: boolean, removeImage3?: boolean) {
     const blog = await this.blogModel.findById(id);
     if (!blog) throw new NotFoundException('Blog não encontrado');
 
-    let imageUrl = blog.image;
-    let imageUrl2 = blog.image2
-    let imageUrl3 = blog.image3
+    let imageUrl: string = blog.image;
+    let imageUrl2: string | null = blog.image2 || null;
+    let imageUrl3: string | null = blog.image3 || null;
 
     if (file) {
       const uploadResult = await this.cloudinaryService.uploadImage(file, 'blog-images');
       imageUrl = uploadResult.secure_url;
     }
 
-    if (file2) {
+    if (removeImage2) {
+      imageUrl2 = null;
+    } else if (file2) {
       const uploadResult = await this.cloudinaryService.uploadImage(file2, 'blog-images');
       imageUrl2 = uploadResult.secure_url;
     }
 
-    if (file3) {
+    if (removeImage3) {
+      imageUrl3 = null;
+    } else if (file3) {
       const uploadResult = await this.cloudinaryService.uploadImage(file3, 'blog-images');
       imageUrl3 = uploadResult.secure_url;
     }
 
-    Object.assign(blog, {
-      ...updateBlogDto,
-      image: imageUrl,
-      image2: imageUrl2,
-      image3: imageUrl3
-    });
+    if (updateBlogDto.title) blog.title = updateBlogDto.title;
+    if (updateBlogDto.content) blog.content = updateBlogDto.content;
+    if (updateBlogDto.category) blog.category = updateBlogDto.category;
+    if (updateBlogDto.isPublished !== undefined) blog.isPublished = updateBlogDto.isPublished;
+    if (updateBlogDto.link !== undefined) {
+      blog.link = updateBlogDto.link === 'true' ? '' : updateBlogDto.link;
+    }
+    
+    blog.image = imageUrl;
+    (blog as any).image2 = imageUrl2;
+    (blog as any).image3 = imageUrl3;
 
     return blog.save();
   }
@@ -145,5 +215,59 @@ export class BlogService {
     }
 
     return { message: 'Blog deletado com sucesso' };
+  }
+
+  async getMonthlyGrowth() {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const currentMonthCount = await this.blogModel.countDocuments({
+      createdAt: { $gte: currentMonthStart }
+    });
+
+    const previousMonthCount = await this.blogModel.countDocuments({
+      createdAt: { 
+        $gte: previousMonthStart,
+        $lt: currentMonthStart
+      }
+    });
+
+    const growth = previousMonthCount > 0 
+      ? ((currentMonthCount - previousMonthCount) / previousMonthCount) * 100
+      : (currentMonthCount > 0 ? 100 : 0);
+
+    return {
+      currentMonth: currentMonthCount,
+      previousMonth: previousMonthCount,
+      growth: Math.round(growth * 100) / 100
+    };
+  }
+
+  async getChartData(months: number = 4) {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+
+    const monthsArray: Array<{ month: string; count: number }> = [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      const monthName = date.toLocaleString('pt-BR', { month: 'short' });
+
+      const monthCount = await this.blogModel.countDocuments({
+        createdAt: { 
+          $gte: startDate,
+          $lte: monthEnd
+        }
+      });
+
+      monthsArray.push({
+        month: monthName,
+        count: monthCount
+      });
+    }
+
+    return monthsArray;
   }
 }

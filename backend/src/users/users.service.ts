@@ -193,7 +193,7 @@ export class UsersService {
     }
 
     async findAllUsers() {
-        return this.userModel.find().lean().exec();
+        return this.userModel.find().sort({ createdAt: -1 }).lean().exec();
     }
 
     async getUserCount() {
@@ -208,7 +208,12 @@ export class UsersService {
         return user.save();
     }
 
-    async deleteById(id: string) {
+    async deleteById(id: string, currentUserId?: string) {
+        // Impede que o usuário delete a própria conta
+        if (currentUserId && id === currentUserId) {
+          throw new ForbiddenException('Você não pode excluir sua própria conta');
+        }
+        
         const deleted = await this.userModel.findByIdAndDelete(id).exec();
         
         if (!deleted) {
@@ -217,4 +222,61 @@ export class UsersService {
     
         return { message: 'Usuario deletado com sucesso' };
       }
+
+    async getMonthlyGrowth() {
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+        const currentMonthTotal = await this.userModel.countDocuments({
+            createdAt: { $lte: now }
+        });
+
+        const previousMonthTotal = await this.userModel.countDocuments({
+            createdAt: { $lte: previousMonthEnd }
+        });
+
+        let growth = 0;
+        if (previousMonthTotal > 0) {
+            growth = ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100;
+        } else if (previousMonthTotal === 0 && currentMonthTotal > 0) {
+            growth = 0; // Não há dados anteriores para comparar
+        }
+
+        return {
+            currentMonth: currentMonthTotal,
+            previousMonth: previousMonthTotal,
+            growth: Math.round(growth * 100) / 100
+        };
+    }
+
+    async getChartData(months: number = 4) {
+        const now = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+
+        const monthsArray: Array<{ month: string; count: number }> = [];
+        let accumulatedCount = 0;
+
+        for (let i = months - 1; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const monthName = date.toLocaleString('pt-BR', { month: 'short' });
+
+            const monthCount = await this.userModel.countDocuments({
+                createdAt: { 
+                    $gte: startDate,
+                    $lte: monthEnd
+                }
+            });
+
+            accumulatedCount = monthCount;
+            monthsArray.push({
+                month: monthName,
+                count: accumulatedCount
+            });
+        }
+
+        return monthsArray;
+    }
 }
