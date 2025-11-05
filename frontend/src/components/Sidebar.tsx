@@ -1,6 +1,8 @@
-import { Home, Search, MessageCircle, User, Car, LogOut, Menu, X, BookOpen, Shield, Calculator } from "lucide-react";
+import { Home, Search, MessageCircle, User, Car, LogOut, BookOpen, Shield, Calculator } from "lucide-react";
 import { Button } from "./ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import { fetchUnreadCount } from "../services/chatApi";
 
 interface SidebarProps {
   userType: 'passenger' | 'driver' | 'advertiser' | 'admin';
@@ -9,10 +11,29 @@ interface SidebarProps {
   onLogout: () => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  onUnreadChange?: (count: number) => void;
 }
 
-export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen, setIsOpen }: SidebarProps) {
-  const unreadMessages = 3; // Mock data - número de mensagens não lidas
+export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen, setIsOpen, onUnreadChange }: SidebarProps) {
+  const [unreadMessages, setUnreadMessages] = useState<number>(0);
+
+  // Fetch unread count from backend
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    let cancelled = false;
+    try {
+      const decoded: any = jwtDecode(token);
+      const myId = decoded?.sub as string | undefined;
+      if (!myId) return;
+      fetchUnreadCount(myId, token).then((count) => {
+        if (cancelled) return;
+        setUnreadMessages(count);
+        onUnreadChange?.(count);
+      }).catch(() => {});
+    } catch {}
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
   const getColor = () => {
     switch (userType) {
@@ -95,6 +116,10 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
               onClick={() => {
                 onNavigate(item.id);
                 setIsOpen(false);
+                if (item.id === 'chat') {
+                  setUnreadMessages(0);
+                  onUnreadChange?.(0);
+                }
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive ? getColorActive() : `text-foreground ${getColorHover()}`
@@ -102,6 +127,11 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
             >
               <Icon className="w-5 h-5" />
               <span>{item.label}</span>
+              {item.id === 'chat' && unreadMessages > 0 && (
+                <span className="ml-auto bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadMessages}
+                </span>
+              )}
             </button>
           );
         })}
@@ -140,5 +170,7 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
 }
 
 export function getUnreadMessages() {
-  return 3; // Mock data - número de mensagens não lidas
+  // Legacy helper (kept for compatibility). Prefer lifting state in App.
+  const val = Number(localStorage.getItem('unreadCount') || '0');
+  return Number.isFinite(val) ? val : 0;
 }

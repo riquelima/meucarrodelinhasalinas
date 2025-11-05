@@ -14,9 +14,10 @@ import { ScrollToTop } from "./ScrollToTop";
 interface HomeDashboardProps {
   onNavigate: (screen: string) => void;
   userType: 'passenger' | 'driver' | 'advertiser' | 'admin';
+  onStartChat?: (userId: string, name: string, avatar?: string) => void;
 }
 
-export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
+export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboardProps) {
   const [showHowToCallModal, setShowHowToCallModal] = useState(false);
   const [showTipsModal, setShowTipsModal] = useState(false);
   const [showStatusHelpModal, setShowStatusHelpModal] = useState(false);
@@ -219,13 +220,29 @@ export function HomeDashboard({ onNavigate, userType }: HomeDashboardProps) {
                   <p className="text-muted-foreground text-xs sm:text-sm">{driver.description}</p>
                   {userType === 'passenger' && (
                     <div className="flex gap-2 pt-2">
-                      <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
+                      <Button
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9"
+                        onClick={() => {
+                          if (onStartChat) {
+                            onStartChat(driver._id || driver.id, driver.name, driver.avatar);
+                          } else {
+                            // fallback: navega para chat
+                            onNavigate('chat');
+                          }
+                        }}
+                      >
                         Solicitar Vaga
                       </Button>
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => onNavigate('chat')}
+                        onClick={() => {
+                          if (onStartChat) {
+                            onStartChat(driver._id || driver.id, driver.name, driver.avatar);
+                          } else {
+                            onNavigate('chat');
+                          }
+                        }}
                         className="h-9 w-9"
                       >
                         <Phone className="w-4 h-4" />
