@@ -93,5 +93,16 @@ export class AdsController {
     return this.adsService.updateStatus(id, body.isActive);
   }
 
+  @Get('stats/monthly-growth')
+  @ApiOperation({ summary: 'Retorna o crescimento mensal de anúncios ativos' })
+  async getMonthlyGrowth() {
+    return this.adsService.getMonthlyGrowth();
+  }
+
+  @Get('stats/chart-data')
+  @ApiOperation({ summary: 'Retorna dados do gráfico dos últimos 4 meses' })
+  async getChartData() {
+    return this.adsService.getChartData();
+  }
 
 }

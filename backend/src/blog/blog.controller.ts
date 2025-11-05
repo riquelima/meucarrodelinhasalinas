@@ -121,4 +121,28 @@ export class BlogController {
     async deleteById(@Param('id') id: string) {
         return this.blogService.deleteById(id);
     }
+
+    @Get('stats/monthly-growth')
+    @ApiOperation({ summary: 'Retorna o crescimento mensal de posts no blog' })
+    async getMonthlyGrowth() {
+        return this.blogService.getMonthlyGrowth();
+    }
+
+    @Get('stats/chart-data')
+    @ApiOperation({ summary: 'Retorna dados do gráfico dos últimos 4 meses' })
+    async getChartData() {
+        return this.blogService.getChartData();
+    }
+
+    @Get('stats/total-views')
+    @ApiOperation({ summary: 'Retorna o total de visualizações de todos os blogs' })
+    async getTotalViews() {
+        return this.blogService.getTotalViews();
+    }
+
+    @Get('stats/views-monthly-growth')
+    @ApiOperation({ summary: 'Retorna o crescimento mensal de visualizações' })
+    async getViewsMonthlyGrowth() {
+        return this.blogService.getViewsMonthlyGrowth();
+    }
 }

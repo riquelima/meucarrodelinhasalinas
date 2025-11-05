@@ -165,4 +165,61 @@ export class AdsService {
         anuncio.isActive = status;
         return anuncio.save();
   }
+
+  async getMonthlyGrowth() {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    const currentMonthTotal = await this.adsModel.countDocuments({
+      createdAt: { $lte: now },
+      isActive: true
+    });
+
+    const previousMonthTotal = await this.adsModel.countDocuments({
+      createdAt: { $lte: previousMonthEnd },
+      isActive: true
+    });
+
+    let growth = 0;
+    if (previousMonthTotal > 0) {
+      growth = ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100;
+    } else if (previousMonthTotal === 0 && currentMonthTotal > 0) {
+      growth = 0; // Não há dados anteriores para comparar
+    }
+
+    return {
+      currentMonth: currentMonthTotal,
+      previousMonth: previousMonthTotal,
+      growth: Math.round(growth * 100) / 100
+    };
+  }
+
+  async getChartData(months: number = 4) {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+
+    const monthsArray: Array<{ month: string; count: number }> = [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      const monthName = date.toLocaleString('pt-BR', { month: 'short' });
+
+      const monthCount = await this.adsModel.countDocuments({
+        createdAt: { 
+          $gte: startDate,
+          $lte: monthEnd
+        },
+        isActive: true
+      });
+
+      monthsArray.push({
+        month: monthName,
+        count: monthCount
+      });
+    }
+
+    return monthsArray;
+  }
 }

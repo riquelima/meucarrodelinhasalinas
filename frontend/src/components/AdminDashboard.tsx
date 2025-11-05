@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Users, FileText, Megaphone, MessageSquare, Eye, MousePointerClick, Plus, Trash2, Filter, Loader2, Edit } from "lucide-react";
+import { Users, FileText, Megaphone, Eye, Plus, Trash2, Filter, Loader2, Edit } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import React, { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
@@ -71,6 +71,25 @@ interface AdFilters {
   category: string;
   search: string;
 }
+
+const API_BASE_URL = 'http://localhost:3000';
+
+const getAuthToken = (): string => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Token não encontrado");
+  return token;
+};
+
+const getCurrentUserId = (): string | null => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const decodedToken = jwtDecode<any>(token);
+    return decodedToken.sub || null;
+  } catch {
+    return null;
+  }
+};
 
 export function AdminDashboard() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -143,6 +162,11 @@ export function AdminDashboard() {
     role: 'passageiro' as 'passageiro' | 'motorista' | 'anunciante' | 'admin',
     number: ''
   });
+  const [userGrowth, setUserGrowth] = useState({ currentMonth: 0, previousMonth: 0, growth: 0 });
+  const [adsGrowth, setAdsGrowth] = useState({ currentMonth: 0, previousMonth: 0, growth: 0 });
+  const [blogGrowth, setBlogGrowth] = useState({ currentMonth: 0, previousMonth: 0, growth: 0 });
+  const [chartData, setChartData] = useState<Array<{ name: string; usuarios: number; anuncios: number; posts: number }>>([]);
+  const [totalViews, setTotalViews] = useState(0);
 
   const formatFullDate = (isoDate: string | { $date: string } | undefined) => {
     if (!isoDate) return "";
@@ -166,10 +190,8 @@ export function AdminDashboard() {
   };
 
   const fetchUsers = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch('http://localhost:3000/users', {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/users`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -181,10 +203,8 @@ export function AdminDashboard() {
   };
 
   const createUser = async (userData: any) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch('http://localhost:3000/auth/register', {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -201,10 +221,8 @@ export function AdminDashboard() {
   };
 
   const deleteUser = async (userId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch(`http://localhost:3000/users/${userId}`, {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
       method: 'DELETE',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -217,10 +235,8 @@ export function AdminDashboard() {
   };
 
   const fetchBlogs = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch('http://localhost:3000/blogs', {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/blogs`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -232,9 +248,7 @@ export function AdminDashboard() {
   };
 
   const createBlog = async (blogData: any, files: {image?: File, image2?: File, image3?: File}) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
+    const token = getAuthToken();
     const formData = new FormData();
     formData.set('title', blogData.title);
     formData.set('content', blogData.content);
@@ -247,7 +261,7 @@ export function AdminDashboard() {
     if (files.image2) formData.set('image2', files.image2);
     if (files.image3) formData.set('image3', files.image3);
 
-    const response = await fetch('http://localhost:3000/blogs', {
+    const response = await fetch(`${API_BASE_URL}/blogs`, {
       method: 'POST',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -263,9 +277,7 @@ export function AdminDashboard() {
   };
 
   const updateBlog = async (blogId: string, blogData: any, files: {image?: File, image2?: File, image3?: File}, removedImgs?: Set<'image' | 'image2' | 'image3'>) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
+    const token = getAuthToken();
     const formData = new FormData();
     if (blogData.title) formData.set('title', blogData.title);
     if (blogData.content) formData.set('content', blogData.content);
@@ -288,7 +300,7 @@ export function AdminDashboard() {
       });
     }
 
-    const response = await fetch(`http://localhost:3000/blogs/${blogId}`, {
+    const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
       method: 'PUT',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -304,10 +316,8 @@ export function AdminDashboard() {
   };
 
   const deleteBlog = async (blogId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch(`http://localhost:3000/blogs/${blogId}`, {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
       method: 'DELETE',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -320,10 +330,8 @@ export function AdminDashboard() {
   };
 
   const fetchAds = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch('http://localhost:3000/ads', {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/ads`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -335,9 +343,7 @@ export function AdminDashboard() {
   };
 
   const createAd = async (adData: any, file: File | null, userId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
+    const token = getAuthToken();
     const formData = new FormData();
     formData.set('nameCompany', adData.nameCompany);
     formData.set('numberPhone', adData.numberPhone);
@@ -347,7 +353,7 @@ export function AdminDashboard() {
     
     if (file) formData.set('image', file);
 
-    const response = await fetch(`http://localhost:3000/ads/${userId}/anuncios`, {
+    const response = await fetch(`${API_BASE_URL}/ads/${userId}/anuncios`, {
       method: 'POST',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -363,9 +369,7 @@ export function AdminDashboard() {
   };
 
   const updateAd = async (adId: string, adData: any, file: File | null) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
+    const token = getAuthToken();
     const formData = new FormData();
     if (adData.nameCompany) formData.set('nameCompany', adData.nameCompany);
     if (adData.numberPhone) formData.set('numberPhone', adData.numberPhone);
@@ -378,7 +382,7 @@ export function AdminDashboard() {
     
     if (file) formData.set('image', file);
 
-    const response = await fetch(`http://localhost:3000/ads/${adId}`, {
+    const response = await fetch(`${API_BASE_URL}/ads/${adId}`, {
       method: 'PATCH',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -394,10 +398,8 @@ export function AdminDashboard() {
   };
 
   const deleteAd = async (adId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Token não encontrado");
-
-    const response = await fetch(`http://localhost:3000/ads/${adId}`, {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/ads/${adId}`, {
       method: 'DELETE',
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -545,17 +547,12 @@ export function AdminDashboard() {
     if (!userToDelete) return;
     
     try {
-      // Verifica se o usuário está tentando deletar a própria conta
-      const token = localStorage.getItem("token");
-      if (token) {
-        const decodedToken = jwtDecode<any>(token);
-        const currentUserId = decodedToken.sub;
-        if (userToDelete === currentUserId) {
-          toast.error('Você não pode excluir sua própria conta');
-          setDeleteConfirmOpen(false);
-          setUserToDelete(null);
-          return;
-        }
+      const currentUserId = getCurrentUserId();
+      if (currentUserId && userToDelete === currentUserId) {
+        toast.error('Você não pode excluir sua própria conta');
+        setDeleteConfirmOpen(false);
+        setUserToDelete(null);
+        return;
       }
       
       await deleteUser(userToDelete);
@@ -615,17 +612,17 @@ export function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 2 * 1024 * 1024) {
       toast.error('A imagem deve ter no máximo 2MB.');
-      return;
-    }
+        return;
+      }
 
-    if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith('image/')) {
       toast.error('Selecione um arquivo de imagem válido.');
-      return;
+        return;
     }
 
-    const resizedFile = await resizeImage(file);
+      const resizedFile = await resizeImage(file);
     setBlogImages({ ...blogImages, [imageKey]: resizedFile });
     setBlogImagePreviews({ ...blogImagePreviews, [imageKey]: URL.createObjectURL(resizedFile) });
   };
@@ -669,10 +666,10 @@ export function AdminDashboard() {
       
       fileIndex++;
     }
-
+    
     setBlogImages(newImages);
     setBlogImagePreviews(newPreviews);
-    
+
     e.target.value = '';
   };
 
@@ -695,11 +692,8 @@ export function AdminDashboard() {
     e.preventDefault();
     setCreatingBlog(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Token não encontrado");
-      
-      const decodedToken = jwtDecode<any>(token);
-      const authorId = decodedToken.sub;
+      const authorId = getCurrentUserId();
+      if (!authorId) throw new Error("Token não encontrado");
 
       await createBlog({ ...blogFormData, authorId }, blogImages);
       setIsBlogModalOpen(false);
@@ -815,11 +809,8 @@ export function AdminDashboard() {
     e.preventDefault();
     setCreatingAd(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Token não encontrado");
-      
-      const decodedToken = jwtDecode<any>(token);
-      const userId = decodedToken.sub;
+      const userId = getCurrentUserId();
+      if (!userId) throw new Error("Token não encontrado");
 
       const formattedPhone = formatPhoneNumber(adFormData.numberPhone);
       await createAd({ ...adFormData, numberPhone: formattedPhone }, adImage, userId);
@@ -854,6 +845,11 @@ export function AdminDashboard() {
   const handleUpdateAd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adToEdit) return;
+    
+    if (!adImage && !adImagePreview) {
+      toast.error('É necessário ter pelo menos uma imagem no anúncio');
+      return;
+    }
     
     setEditingAd(true);
     try {
@@ -896,22 +892,97 @@ export function AdminDashboard() {
     }
   };
 
+  const formatGrowth = (growth: number) => {
+    if (growth === 0) return "0%";
+    const sign = growth > 0 ? "+" : "";
+    return `${sign}${growth.toFixed(0)}%`;
+  };
+
   const stats = [
-    { label: "Total de Usuários", value: users.length.toString(), change: "+12%", icon: Users, color: "text-blue-500" },
-    { label: "Anúncios Ativos", value: ads.filter(a => a.isActive).length.toString(), change: "+5%", icon: Megaphone, color: "text-purple-400" },
-    { label: "Posts no Blog", value: blogs.length.toString(), change: "+3", icon: FileText, color: "text-green-500" },
-    { label: "Mensagens Recebidas", value: "87", change: "+18%", icon: MessageSquare, color: "text-orange-500" },
+    { 
+      label: "Total de Usuários", 
+      value: users.length.toString(), 
+      change: formatGrowth(userGrowth.growth), 
+      icon: Users, 
+      color: "text-blue-500" 
+    },
+    { 
+      label: "Anúncios Ativos", 
+      value: ads.filter(a => a.isActive).length.toString(), 
+      change: formatGrowth(adsGrowth.growth), 
+      icon: Megaphone, 
+      color: "text-purple-400" 
+    },
+    { 
+      label: "Posts no Blog", 
+      value: blogs.length.toString(), 
+      change: blogGrowth.currentMonth > 0 ? `+${blogGrowth.currentMonth}` : "0", 
+      icon: FileText, 
+      color: "text-green-500" 
+    },
+    { label: "Visualizações do Blog", value: totalViews.toString(), change: "", icon: Eye, color: "text-orange-500" },
   ];
 
 
-  const chartData = [
-    { name: "Jan", usuarios: 120 },
-    { name: "Fev", usuarios: 180 },
-    { name: "Mar", usuarios: 250 },
-    { name: "Abr", usuarios: 320 },
-    { name: "Mai", usuarios: 410 },
-    { name: "Jun", usuarios: 520 },
-  ];
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const [userGrowthRes, adsGrowthRes, blogGrowthRes, userChartRes, adsChartRes, blogChartRes, totalViewsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/users/stats/monthly-growth`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/ads/stats/monthly-growth`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/blogs/stats/monthly-growth`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/users/stats/chart-data`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/ads/stats/chart-data`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/blogs/stats/chart-data`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/blogs/stats/total-views`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          })
+        ]);
+
+        const userGrowthData = await userGrowthRes.json();
+        const adsGrowthData = await adsGrowthRes.json();
+        const blogGrowthData = await blogGrowthRes.json();
+        const userChartData = await userChartRes.json();
+        const adsChartData = await adsChartRes.json();
+        const blogChartData = await blogChartRes.json();
+        const totalViewsData = await totalViewsRes.json();
+
+        setUserGrowth(userGrowthData);
+        setAdsGrowth(adsGrowthData);
+        setBlogGrowth(blogGrowthData);
+        setTotalViews(totalViewsData);
+
+        const months = userChartData.map((u: any) => u.month);
+        const combinedChartData = months.map((month: string, index: number) => ({
+          name: month,
+          usuarios: userChartData[index]?.count || 0,
+          anuncios: adsChartData[index]?.count || 0,
+          posts: blogChartData[index]?.count || 0
+        }));
+
+        setChartData(combinedChartData);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+      }
+    };
+
+    loadStats();
+  }, []);
 
   return (
     <div className="pt-20">
@@ -932,7 +1003,7 @@ export function AdminDashboard() {
                     <div className="flex-1">
                       <div className="text-muted-foreground text-xs mb-1">{stat.label}</div>
                       <div className="text-foreground text-xl sm:text-2xl mb-1">{stat.value}</div>
-                      <div className="text-green-500 text-xs">{stat.change}</div>
+                      <div className={`text-xs ${stat.change && stat.change.startsWith('+') ? 'text-green-500' : stat.change && stat.change.startsWith('-') ? 'text-red-500' : 'text-muted-foreground'}`}>{stat.change || ''}</div>
                     </div>
                     <div className={`p-2 rounded-lg bg-muted`}>
                       <Icon className={`w-5 h-5 ${stat.color}`} />
@@ -947,8 +1018,8 @@ export function AdminDashboard() {
         {/* Chart */}
         <Card className="shadow-sm bg-card border-border">
           <CardHeader className="p-4">
-            <CardTitle className="text-foreground text-base">Crescimento de Usuários</CardTitle>
-            <CardDescription className="text-xs">Últimos 6 meses</CardDescription>
+            <CardTitle className="text-foreground text-base">Evolução dos Últimos 4 Meses</CardTitle>
+            <CardDescription className="text-xs">Usuários, Anúncios e Posts</CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <ResponsiveContainer width="100%" height={200}>
@@ -958,6 +1029,8 @@ export function AdminDashboard() {
                 <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
                 <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a' }} />
                 <Line type="monotone" dataKey="usuarios" stroke="#3b82f6" strokeWidth={2} name="Usuários" />
+                <Line type="monotone" dataKey="anuncios" stroke="#a855f7" strokeWidth={2} name="Anúncios" />
+                <Line type="monotone" dataKey="posts" stroke="#22c55e" strokeWidth={2} name="Posts" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -1144,18 +1217,7 @@ export function AdminDashboard() {
                             size="sm" 
                             className="flex-1 h-8 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
                             onClick={() => handleDeleteClick(user._id)}
-                            disabled={(() => {
-                              const token = localStorage.getItem("token");
-                              if (token) {
-                                try {
-                                  const decodedToken = jwtDecode<any>(token);
-                                  return decodedToken.sub === user._id;
-                                } catch {
-                                  return false;
-                                }
-                              }
-                              return false;
-                            })()}
+                            disabled={getCurrentUserId() === user._id}
                           >
                             <Trash2 className="w-3 h-3 mr-1" />
                             Excluir
@@ -1194,30 +1256,8 @@ export function AdminDashboard() {
                                 size="icon" 
                                 className="h-8 w-8 text-red-500 hover:text-red-600 disabled:opacity-50"
                                 onClick={() => handleDeleteClick(user._id)}
-                                disabled={(() => {
-                                  const token = localStorage.getItem("token");
-                                  if (token) {
-                                    try {
-                                      const decodedToken = jwtDecode<any>(token);
-                                      return decodedToken.sub === user._id;
-                                    } catch {
-                                      return false;
-                                    }
-                                  }
-                                  return false;
-                                })()}
-                                title={(() => {
-                                  const token = localStorage.getItem("token");
-                                  if (token) {
-                                    try {
-                                      const decodedToken = jwtDecode<any>(token);
-                                      if (decodedToken.sub === user._id) {
-                                        return 'Você não pode excluir sua própria conta';
-                                      }
-                                    } catch {}
-                                  }
-                                  return 'Excluir usuário';
-                                })()}
+                                disabled={getCurrentUserId() === user._id}
+                                title={getCurrentUserId() === user._id ? 'Você não pode excluir sua própria conta' : 'Excluir usuário'}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1330,8 +1370,8 @@ export function AdminDashboard() {
                     <DialogDescription>Configure um novo anúncio na plataforma</DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleCreateAd}>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
                         <Label htmlFor="adNameCompany">Nome da Empresa *</Label>
                         <Input 
                           id="adNameCompany" 
@@ -1341,8 +1381,8 @@ export function AdminDashboard() {
                           onChange={(e) => setAdFormData({...adFormData, nameCompany: e.target.value})}
                           required
                         />
-                      </div>
-                      <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="adNumberPhone">Telefone/WhatsApp *</Label>
                         <Input 
                           id="adNumberPhone" 
@@ -1353,8 +1393,8 @@ export function AdminDashboard() {
                           onChange={(e) => setAdFormData({...adFormData, numberPhone: e.target.value})}
                           required
                         />
-                      </div>
-                      <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="adCategory">Categoria *</Label>
                         <Select value={adFormData.category} onValueChange={(value) => setAdFormData({...adFormData, category: value})}>
                           <SelectTrigger className="bg-input-background">
@@ -1370,8 +1410,8 @@ export function AdminDashboard() {
                             <SelectItem value="Outros">Outros</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
+                    </div>
+                    <div className="space-y-2">
                         <Label htmlFor="adDescription">Descrição *</Label>
                         <Textarea 
                           id="adDescription" 
@@ -1418,9 +1458,9 @@ export function AdminDashboard() {
                             <SelectItem value="paused">Pausado</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
                     </div>
-                    <DialogFooter>
+                  </div>
+                  <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => {
                         setIsAdModalOpen(false);
                         setAdFormData({ nameCompany: '', numberPhone: '', description: '', category: 'Alimentação', isActive: true });
@@ -1431,7 +1471,7 @@ export function AdminDashboard() {
                         {creatingAd ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                         Criar Anúncio
                       </Button>
-                    </DialogFooter>
+                  </DialogFooter>
                   </form>
                 </DialogContent>
               </Dialog>
@@ -1443,30 +1483,30 @@ export function AdminDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-3">
                 {filteredAds.map((ad) => (
                   <Card key={ad._id} className="bg-card border-border">
-                    <CardContent className="p-4">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-2">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-2">
                             <h3 className="text-foreground truncate">{ad.nameCompany}</h3>
                             {ad.isActive ? (
-                              <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Ativo</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs flex-shrink-0">Pausado</Badge>
-                            )}
-                          </div>
-                          <div className="text-muted-foreground text-xs mb-2">{ad.description}</div>
-                          <div className="flex flex-wrap gap-3 text-xs">
-                            <div className="flex items-center gap-1">
-                              <Eye className="w-3 h-3 text-blue-500" />
-                              <span className="text-muted-foreground">{ad.views?.toLocaleString() || 0} visualizações</span>
-                            </div>
-                            <div className="text-purple-400">{ad.category}</div>
-                          </div>
+                            <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Ativo</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">Pausado</Badge>
+                          )}
                         </div>
-                        <div className="flex gap-2">
+                          <div className="text-muted-foreground text-xs mb-2">{ad.description}</div>
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-3 h-3 text-blue-500" />
+                              <span className="text-muted-foreground">{ad.views?.toLocaleString() || 0} visualizações</span>
+                          </div>
+                            <div className="text-purple-400">{ad.category}</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1482,15 +1522,15 @@ export function AdminDashboard() {
                             className="h-8 text-xs text-red-500 hover:text-red-600"
                             onClick={() => handleDeleteAdClick(ad._id)}
                           >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Excluir
-                          </Button>
-                        </div>
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Excluir
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
             )}
           </TabsContent>
 
@@ -1632,7 +1672,7 @@ export function AdminDashboard() {
                           <div className="relative">
                             <Label>Imagem 1</Label>
                             <Button
-                              type="button"
+                                    type="button"
                               variant="destructive"
                               size="sm"
                               className="absolute top-0 right-0"
@@ -1658,9 +1698,9 @@ export function AdminDashboard() {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                             <img src={blogImagePreviews.image2} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                              </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       {blogImagePreviews.image3 && (
                         <div className="space-y-2">
                           <div className="relative">
@@ -1675,7 +1715,7 @@ export function AdminDashboard() {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                             <img src={blogImagePreviews.image3} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
-                          </div>
+                      </div>
                         </div>
                       )}
                       <div className="space-y-2">
@@ -1967,7 +2007,7 @@ export function AdminDashboard() {
                 setAdImage(null);
                 setAdImagePreview(null);
               }}>Cancelar</Button>
-              <Button type="submit" className="bg-purple-400 hover:bg-purple-500" disabled={editingAd}>
+              <Button type="submit" className="bg-purple-400 hover:bg-purple-500" disabled={editingAd || (!adImage && !adImagePreview)}>
                 {editingAd ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Salvar Alterações
               </Button>
@@ -2038,7 +2078,7 @@ export function AdminDashboard() {
                   <div className="relative">
                     <Label>Imagem 1</Label>
                     <Button
-                      type="button"
+                          type="button"
                       variant="destructive"
                       size="sm"
                       className="absolute top-0 right-0"
@@ -2047,9 +2087,9 @@ export function AdminDashboard() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                     <img src={blogImagePreviews.image} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
+                      </div>
                   </div>
-                </div>
-              )}
+                )}
               {blogImagePreviews.image2 && (
                 <div className="space-y-2">
                   <div className="relative">
@@ -2064,7 +2104,7 @@ export function AdminDashboard() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                     <img src={blogImagePreviews.image2} alt="Preview" className="w-full h-32 object-cover rounded mt-2" />
-                  </div>
+              </div>
                 </div>
               )}
               {blogImagePreviews.image3 && (
