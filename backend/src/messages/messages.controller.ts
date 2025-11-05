@@ -13,6 +13,11 @@ export class MessageController {
     return this.messageService.getUserConversations(id);
   }
 
+  @Get('unread-count/:id')
+  async getUnreadCount(@Param('id') id: string) {
+    return this.messageService.getTotalUnreadCount(id);
+  }
+
   @Get()
     async getAllMessages() {
         return this.messageService.getAllMessages();

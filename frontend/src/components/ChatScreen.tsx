@@ -1,73 +1,111 @@
-import { Card, CardContent } from "./ui/card";
+import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Send, Search, MoreVertical, ArrowLeft, Info, X, AlertTriangle } from "lucide-react";
+import { Send, Search, MoreVertical, ArrowLeft, Info } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { jwtDecode } from "jwt-decode";
+import { useChatSocket, ChatMessage } from "../hooks/useChatSocket";
+import { fetchConversations, type Conversation } from "../services/chatApi";
+import { fetchUserById, type User } from "../services/usersApi";
 
 interface ChatScreenProps {
   userType: 'passenger' | 'driver' | 'advertiser' | 'admin';
+  startUserId?: string;
+  startUserName?: string;
+  startUserAvatar?: string;
+  onStartChatConsumed?: () => void;
 }
 
-export function ChatScreen({ userType }: ChatScreenProps) {
-  const [selectedChat, setSelectedChat] = useState(1);
+export function ChatScreen({ userType, startUserId, startUserName, startUserAvatar, onStartChatConsumed }: ChatScreenProps) {
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [showDriverInfo, setShowDriverInfo] = useState(false);
-  const [showEndChat, setShowEndChat] = useState(false);
-  const [showReport, setShowReport] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [contactInfo, setContactInfo] = useState<User | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(false);
 
-  const conversations = [
-    { 
-      id: 1, 
-      name: "Carlos Silva", 
-      lastMessage: "Combinado! Até amanhã às 7h", 
-      time: "10:30", 
-      unread: 0,
-      photo: "https://images.unsplash.com/photo-1672685667592-0392f458f46f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBtYW4lMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjA1OTM3MjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "online"
-    },
-    { 
-      id: 2, 
-      name: "Maria Santos", 
-      lastMessage: "Você pode pegar no ponto?", 
-      time: "09:15", 
-      unread: 2,
-      photo: "https://images.unsplash.com/photo-1581065178047-8ee15951ede6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MDYxODgxMHww&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "online"
-    },
-    { 
-      id: 3, 
-      name: "João Oliveira", 
-      lastMessage: "Obrigado pela carona!", 
-      time: "Ontem", 
-      unread: 0,
-      photo: "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMG1hbiUyMGhlYWRzaG90fGVufDF8fHx8MTc2MDY0NjI3MHww&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "offline"
-    },
-    { 
-      id: 4, 
-      name: "Ana Costa", 
-      lastMessage: "Qual o valor da rota?", 
-      time: "Ontem", 
-      unread: 1,
-      photo: "https://images.unsplash.com/photo-1755889308931-7083dce2a345?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGRyaXZlciUyMHBvcnRyYWl0fGVufDF8fHx8MTc2MDcyNTkwMnww&ixlib=rb-4.1.0&q=80&w=1080",
-      status: "offline"
-    },
-  ];
+  const token = useMemo(() => localStorage.getItem('token') || undefined, []);
+  const myId = useMemo(() => {
+    if (!token) return undefined as string | undefined;
+    try {
+      const decoded: any = jwtDecode(token);
+      return decoded?.sub as string | undefined;
+    } catch {
+      return undefined;
+    }
+  }, [token]);
 
-  const messages = [
-    { id: 1, sender: "other", text: "Oi! Você tem vaga para amanhã?", time: "10:20" },
-    { id: 2, sender: "me", text: "Olá! Sim, tenho uma vaga disponível.", time: "10:22" },
-    { id: 3, sender: "other", text: "Ótimo! Qual o horário de saída?", time: "10:23" },
-    { id: 4, sender: "me", text: "Saio do Centro às 7h em ponto.", time: "10:25" },
-    { id: 5, sender: "other", text: "Perfeito! Pode me pegar na Rua XV?", time: "10:28" },
-    { id: 6, sender: "me", text: "Sim, sem problemas!", time: "10:29" },
-    { id: 7, sender: "other", text: "Combinado! Até amanhã às 7h", time: "10:30" },
-  ];
+  const { connected, sendPrivateMessage, requestHistory, onHistory, onMessageSent, onError } = useChatSocket(token);
+
+  // Carrega conversas do usuario
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!myId || !token) return;
+      try {
+        const conv = await fetchConversations(myId, token);
+        if (cancelled) return;
+        setConversations(conv);
+        if (startUserId) {
+          const has = conv.some(c => c.id === startUserId);
+          if (has) {
+            setSelectedChat(startUserId);
+            return;
+          }
+        }
+        // Se nenhum selecionado, mostra a primeira conversa
+        if (!selectedChat && !startUserId && conv.length > 0) {
+          setSelectedChat(conv[0].id);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar conversas', err);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [myId, token, startUserId]);
+
+  // Socket: escuta novas mensagens e historico
+  useEffect(() => {
+    if (!connected) return;
+    const offHistory = onHistory((msgs) => {
+      const sorted = [...msgs].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+      setMessages(sorted);
+    });
+    const offMsg = onMessageSent((msg) => {
+      const fromId = typeof msg.from === 'string' ? msg.from : msg.from?._id;
+      const toId = typeof msg.to === 'string' ? msg.to : msg.to?._id;
+      if (!selectedChat || !myId) return;
+      const isInChat = (fromId === selectedChat && toId === myId) || (fromId === myId && toId === selectedChat);
+      if (isInChat) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    });
+    const offError = onError((e) => console.error('Socket error', e));
+    return () => {
+      offHistory?.();
+      offMsg?.();
+      offError?.();
+    };
+  }, [connected, onHistory, onMessageSent, onError, selectedChat, myId]);
+
+  // Carrega historico de mensagens baseado no chat selecionado
+  useEffect(() => {
+    if (!connected || !selectedChat) return;
+    try {
+      requestHistory({ withUserId: selectedChat, limit: 50 });
+    } catch (err) {
+      console.error('Falha ao solicitar histórico', err);
+    }
+  }, [connected, selectedChat, requestHistory]);
 
   const getColor = () => {
     switch (userType) {
@@ -77,7 +115,86 @@ export function ChatScreen({ userType }: ChatScreenProps) {
     }
   };
 
-  const currentChat = conversations.find(c => c.id === selectedChat);
+  const currentChat = useMemo(() => {
+    const chat = conversations.find(c => c.id === selectedChat);
+    // Update status based on latest message if available
+    if (chat && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      const otherUser = typeof lastMsg.from === 'object' && lastMsg.from._id !== myId ? lastMsg.from : 
+                        typeof lastMsg.to === 'object' && lastMsg.to._id !== myId ? lastMsg.to : null;
+      if (otherUser && otherUser.status) {
+        return { ...chat, status: otherUser.status as 'online' | 'offline' };
+      }
+    }
+    return chat;
+  }, [conversations, selectedChat, messages, myId]);
+
+  const formatTime = (date?: string | Date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const handleStartNewChat = (userId: string, userName: string, userAvatar?: string) => {
+    //Validar se ja existe essa conversa
+    const existingConv = conversations.find(c => c.id === userId);
+    if (existingConv) {
+      setSelectedChat(userId);
+      return;
+    }
+
+    // Cria uma mensagem temporaria caso seja a primeira entre usuarios
+    const newConv: Conversation = {
+      id: userId,
+      name: userName,
+      lastMessage: "",
+      time: "",
+      unread: 0,
+      photo: userAvatar || 'https://via.placeholder.com/150x150.png?text=Sem+Foto',
+      status: 'offline',
+    };
+
+    setConversations(prev => [newConv, ...prev]);
+    setSelectedChat(userId);
+    setMessages([]);
+  };
+
+  // If App requested to start chat with a specific user, handle it here
+  useEffect(() => {
+    if (startUserId) {
+      // Try to find name from existing conversations if not provided
+      const existing = conversations.find(c => c.id === startUserId);
+      const name = startUserName || existing?.name || 'Usuário';
+      const avatar = startUserAvatar || existing?.photo;
+      handleStartNewChat(startUserId, name, avatar);
+      onStartChatConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startUserId]);
+
+  // Auto scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Load real contact info when dialog opens
+  useEffect(() => {
+    const load = async () => {
+      if (!showDriverInfo || !selectedChat || !token) return;
+      try {
+        setLoadingInfo(true);
+        const data = await fetchUserById(selectedChat, token);
+        setContactInfo(data);
+      } catch (e) {
+        console.error('Falha ao carregar informações do contato', e);
+      } finally {
+        setLoadingInfo(false);
+      }
+    };
+    load();
+  }, [showDriverInfo, selectedChat, token]);
 
   return (
     <div className="pt-16 bg-background h-screen flex flex-col">
@@ -85,7 +202,9 @@ export function ChatScreen({ userType }: ChatScreenProps) {
         {/* Conversations list - Hidden on mobile when chat is selected */}
         <div className={`w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border ${selectedChat ? 'hidden lg:block' : 'block'}`}>
           <div className="p-3 lg:p-4 border-b border-border">
-            <h2 className="text-foreground mb-3 lg:mb-4 text-base lg:text-lg">Mensagens</h2>
+            <div className="flex items-center justify-between mb-3 lg:mb-4">
+              <h2 className="text-foreground text-base lg:text-lg">Mensagens</h2>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -133,12 +252,12 @@ export function ChatScreen({ userType }: ChatScreenProps) {
         </div>
 
         {/* Chat area */}
-        <div className={`flex-1 flex flex-col ${selectedChat ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`flex-1 min-h-0 flex flex-col ${selectedChat ? 'flex' : 'hidden lg:flex'}`}>
           {/* Chat header */}
           <div className="p-3 lg:p-4 border-b border-border flex items-center justify-between bg-card">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <Button
-                onClick={() => setSelectedChat(0)}
+                onClick={() => setSelectedChat(null)}
                 variant="ghost"
                 size="icon"
                 className="lg:hidden h-9 w-9 flex-shrink-0"
@@ -147,7 +266,7 @@ export function ChatScreen({ userType }: ChatScreenProps) {
               </Button>
               <Avatar className="w-10 h-10 flex-shrink-0">
                 <ImageWithFallback
-                  src={currentChat?.photo || ''}
+                  src={currentChat?.photo || startUserAvatar || 'https://via.placeholder.com/150x150.png?text=Sem+Foto'}
                   alt={currentChat?.name || ''}
                   className="w-full h-full object-cover"
                 />
@@ -184,25 +303,16 @@ export function ChatScreen({ userType }: ChatScreenProps) {
                   <Info className="w-4 h-4 mr-2" />
                   Ver Informações
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowEndChat(true)} className="cursor-pointer">
-                  <X className="w-4 h-4 mr-2" />
-                  Encerrar Conversa
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowReport(true)} className="cursor-pointer text-red-500">
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Denunciar
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          {/* Contact Info Modal */}
+          {/* Contact Info Modal (real data) */}
           <Dialog open={showDriverInfo} onOpenChange={setShowDriverInfo}>
             <DialogContent className="bg-card border-border max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-foreground">
-                  Informações {userType === 'driver' ? 'do Passageiro' : 'do Motorista'}
+                  Informações do Contato
                 </DialogTitle>
                 <DialogDescription className="sr-only">
                   Visualize as informações detalhadas do contato
@@ -212,7 +322,7 @@ export function ChatScreen({ userType }: ChatScreenProps) {
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16">
                     <ImageWithFallback
-                      src={currentChat?.photo || ''}
+                      src={currentChat?.photo || startUserAvatar || 'https://via.placeholder.com/150x150.png?text=Sem+Foto'}
                       alt={currentChat?.name || ''}
                       className="w-full h-full object-cover"
                     />
@@ -237,117 +347,110 @@ export function ChatScreen({ userType }: ChatScreenProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Avaliação:</span>
-                    <span className="text-foreground">⭐ 4.8</span>
+                    <span className="text-foreground">
+                      {loadingInfo ? 'Carregando…' : (contactInfo?.avgRating ?? '-')}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Viagens:</span>
-                    <span className="text-foreground">234</span>
-                  </div>
-                  {userType === 'passenger' && (
+                  {contactInfo && (
                     <>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Veículo:</span>
-                        <span className="text-foreground">Honda Civic Prata</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Placa:</span>
-                        <span className="text-foreground">ABC-1234</span>
-                      </div>
+                      {contactInfo.vehicle && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Veículo:</span>
+                          <span className="text-foreground">{contactInfo.vehicle}</span>
+                        </div>
+                      )}
+                      {contactInfo.carColor && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Cor:</span>
+                          <span className="text-foreground">{contactInfo.carColor}</span>
+                        </div>
+                      )}
+                      {contactInfo.licensePlate && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Placa:</span>
+                          <span className="text-foreground">{contactInfo.licensePlate}</span>
+                        </div>
+                      )}
+                      {contactInfo.origin && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Origem:</span>
+                          <span className="text-foreground">{contactInfo.origin}</span>
+                        </div>
+                      )}
+                      {contactInfo.destination && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Destino:</span>
+                          <span className="text-foreground">{contactInfo.destination}</span>
+                        </div>
+                      )}
+                      {typeof contactInfo.seatsAvailable === 'number' && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Vagas:</span>
+                          <span className="text-foreground">{contactInfo.seatsAvailable}</span>
+                        </div>
+                      )}
+                      {contactInfo.availableDays && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Dias disponíveis:</span>
+                          <span className="text-foreground">{contactInfo.availableDays}</span>
+                        </div>
+                      )}
+                      {contactInfo.number && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Telefone:</span>
+                          <span className="text-foreground">{contactInfo.number}</span>
+                        </div>
+                      )}
                     </>
                   )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Membro desde:</span>
-                    <span className="text-foreground">Janeiro 2023</span>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* End Chat Modal */}
-          <Dialog open={showEndChat} onOpenChange={setShowEndChat}>
-            <DialogContent className="bg-card border-border max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-foreground">Encerrar Conversa</DialogTitle>
-                <DialogDescription>
-                  Tem certeza que deseja encerrar esta conversa? Esta ação não pode ser desfeita.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex gap-2 pt-4">
-                <Button variant="outline" className="flex-1" onClick={() => setShowEndChat(false)}>
-                  Cancelar
-                </Button>
-                <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={() => setShowEndChat(false)}>
-                  Encerrar
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Report Modal */}
-          <Dialog open={showReport} onOpenChange={setShowReport}>
-            <DialogContent className="bg-card border-border max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-foreground">Denunciar Usuário</DialogTitle>
-                <DialogDescription>
-                  Descreva o motivo da denúncia. Nossa equipe irá analisar o caso.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm text-foreground">Motivo da Denúncia</label>
-                  <select className="w-full h-10 bg-input-background border border-border rounded-md px-3 text-sm">
-                    <option>Comportamento inadequado</option>
-                    <option>Linguagem ofensiva</option>
-                    <option>Spam ou fraude</option>
-                    <option>Outro</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-foreground">Detalhes (opcional)</label>
-                  <textarea 
-                    className="w-full min-h-[100px] bg-input-background border border-border rounded-md px-3 py-2 text-sm resize-none"
-                    placeholder="Descreva o que aconteceu..."
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setShowReport(false)}>
-                  Cancelar
-                </Button>
-                <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={() => setShowReport(false)}>
-                  Enviar Denúncia
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-3 lg:p-4">
-            <div className="space-y-3 lg:space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-3 py-2 lg:px-4 ${
-                      message.sender === 'me'
-                        ? `${getColor()} text-white`
-                        : 'bg-muted text-foreground'
-                    }`}
-                  >
-                    <p className="text-sm lg:text-base">{message.text}</p>
-                    <span
-                      className={`text-xs mt-1 block ${
-                        message.sender === 'me' ? 'text-white/80' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {message.time}
+                    <span className="text-foreground">
+                      {contactInfo?.createdAt ? new Date(contactInfo.createdAt).toLocaleDateString('pt-BR', { year: 'numeric', month: 'long' }) : '-'}
                     </span>
                   </div>
                 </div>
-              ))}
+              </div>
+            </DialogContent>
+          </Dialog>          
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 min-h-0 p-3 lg:p-4">
+            <div className="space-y-3 lg:space-y-4">
+              {messages.map((message) => {
+                const fromId = typeof message.from === 'string' ? message.from : message.from?._id;
+                const amISender = myId && fromId === myId;
+                
+                return (
+                  <div
+                    key={(message as any)._id || `${message.createdAt}-${Math.random()}`}
+                    className={`flex gap-2 ${amISender ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-3 py-2 lg:px-4 ${
+                        amISender ? `${getColor()} text-white` : 'bg-muted text-foreground'
+                      }`}
+                    >
+                      <p className="text-sm lg:text-base">{message.content}</p>
+                      <div className={`flex items-center gap-2 mt-1 ${amISender ? 'justify-end' : 'justify-start'}`}>
+                        <span
+                          className={`text-xs ${
+                            amISender ? 'text-white/80' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {formatTime(message.createdAt)}
+                        </span>
+                        {amISender && (
+                          <span className="text-xs text-white/80">
+                            {message.isRead ? '✓✓' : '✓'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
@@ -357,8 +460,33 @@ export function ChatScreen({ userType }: ChatScreenProps) {
               <Input
                 placeholder="Digite sua mensagem..."
                 className="bg-input-background h-10 text-sm border-border"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (!selectedChat || !input.trim()) return;
+                    try {
+                      sendPrivateMessage(selectedChat, input.trim());
+                      setInput("");
+                    } catch (err) {
+                      console.error('Erro ao enviar mensagem', err);
+                    }
+                  }
+                }}
               />
-              <Button className={`${getColor()} h-10 w-10 lg:w-auto lg:px-4`}>
+              <Button
+                className={`${getColor()} h-10 w-10 lg:w-auto lg:px-4`}
+                onClick={() => {
+                  if (!selectedChat || !input.trim()) return;
+                  try {
+                    sendPrivateMessage(selectedChat, input.trim());
+                    setInput("");
+                  } catch (err) {
+                    console.error('Erro ao enviar mensagem', err);
+                  }
+                }}
+                disabled={!connected}
+              >
                 <Send className="w-4 h-4" />
               </Button>
             </div>

@@ -4,7 +4,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { SignupScreen } from './components/SignupScreen';
 import { ForgotPasswordScreen } from './components/ForgotPasswordScreen';
 import { WelcomeDialog } from './components/WelcomeDialog';
-import { Sidebar, getUnreadMessages } from './components/Sidebar';
+import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
 import { PassengerDashboard } from './components/PassengerDashboard';
@@ -51,6 +51,8 @@ export default function App() {
     return savedTheme || 'dark';
   });
   const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [pendingChat, setPendingChat] = useState<{ id?: string; name?: string; avatar?: string } | null>(null);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   // Tema
   useEffect(() => {
@@ -135,6 +137,12 @@ export default function App() {
 
   const handleNavigate = (screen: string) => setCurrentScreen(screen as Screen);
 
+  // Inicia chat por outra tela
+  const handleStartChat = (id: string, name: string, avatar?: string) => {
+    setPendingChat({ id, name, avatar });
+    setCurrentScreen('chat');
+  };
+
   if (isLoadingUser) {
     return <Loading />;
   }
@@ -168,7 +176,7 @@ export default function App() {
       <Header
         onMenuClick={() => setIsMenuOpen(!isMenuOpen)}
         isMenuOpen={isMenuOpen}
-        unreadMessages={getUnreadMessages()}
+        unreadMessages={unreadCount}
         theme={theme}
         onThemeChange={setTheme}
         onNavigate={handleNavigate}
@@ -180,16 +188,30 @@ export default function App() {
         onLogout={handleLogout}
         isOpen={isMenuOpen}
         setIsOpen={setIsMenuOpen}
+        onUnreadChange={(c) => {
+          setUnreadCount(c);
+          try { localStorage.setItem('unreadCount', String(c)); } catch {}
+        }}
       />
       <div className="w-full">
         {currentScreen === 'dashboard' && userType === 'admin' && <AdminDashboard />}
         {currentScreen === 'dashboard' && userType !== 'admin' && (
-          <HomeDashboard onNavigate={handleNavigate} userType={userType} />
+          <HomeDashboard onNavigate={handleNavigate} userType={userType} onStartChat={handleStartChat} />
         )}
         {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} />}
-        {currentScreen === 'search' && userType === 'advertiser' && <AdvertiserDashboard onNavigate={handleNavigate} />}
+        {currentScreen === 'search' && userType === 'advertiser' && (
+          <AdvertiserDashboard onNavigate={handleNavigate} userId={(user as any)?.sub} />
+        )}
         {currentScreen === 'blog' && <BlogScreen />}
-        {currentScreen === 'chat' && userType !== 'admin' && <ChatScreen userType={userType} />}
+        {currentScreen === 'chat' && userType !== 'admin' && (
+          <ChatScreen
+            userType={userType}
+            startUserId={pendingChat?.id}
+            startUserName={pendingChat?.name}
+            startUserAvatar={pendingChat?.avatar}
+            onStartChatConsumed={() => setPendingChat(null)}
+          />
+        )}
         {currentScreen === 'calculator' && <RideCalculatorScreen userType={userType} />}
         {currentScreen === 'profile' && <ProfileScreen onLogout={handleLogout} theme={theme} onThemeChange={setTheme} />}
       </div>

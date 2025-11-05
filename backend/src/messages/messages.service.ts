@@ -68,8 +68,8 @@ export class MessageService {
             })
             .sort({ createdAt: -1 })
             .limit(limit)
-            .populate('from', 'name')
-            .populate('to', 'name')
+            .populate('from', 'name avatar status')
+            .populate('to', 'name avatar status')
             .lean()
             .exec();
     }
@@ -99,10 +99,19 @@ export class MessageService {
 
         const contacts = await this.userModel
             .find({ _id: { $in: contactIdsStr } })
-            .select('name avatar')
+            .select('name avatar status')
             .lean();
 
         console.log('Contacts found:', contacts);
+
+        // 3️⃣ Calcular não lidas por contato (agregação)
+        const unreadByContact = await this.messageModel.aggregate([
+            { $match: { to: objectId, isRead: false } },
+            { $group: { _id: '$from', count: { $sum: 1 } } },
+        ]);
+        const unreadMap = new Map<string, number>(
+            unreadByContact.map((u: any) => [u._id.toString(), u.count])
+        );
 
         // 4️⃣ Montar lista de conversas
         const conversations = contactIdsStr.map(contactId => {
@@ -122,15 +131,21 @@ export class MessageService {
                 time: lastMessage?.createdAt
                     ? this.formatTime(lastMessage.createdAt)
                     : '',
-                unread: 0, // por enquanto fixo (pode contar mensagens não lidas depois)
+                unread: unreadMap.get(contactId.toString()) || 0,
                 photo:
                     user?.avatar ||
                     'https://via.placeholder.com/150x150.png?text=Sem+Foto',
-                status: 'offline', // podemos integrar com socket depois
+                status: (user as any)?.status || 'offline',
             };
         });
 
         return conversations;
+    }
+
+    async getTotalUnreadCount(userId: string) {
+        const objectId = new Types.ObjectId(userId);
+        const count = await this.messageModel.countDocuments({ to: objectId, isRead: false });
+        return { count };
     }
 
     private formatTime(date: Date) {

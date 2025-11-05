@@ -86,16 +86,22 @@ export class MessageGateway implements OnGatewayInit, OnGatewayConnection, OnGat
 
         try {
             const saved = await this.messageService.createMessage(me._id.toString(), dto.to, dto.content);
+            
+            // Populate para enviar com dados completos
+            const populated = await saved.populate([
+                { path: 'from', select: 'name avatar status' },
+                { path: 'to', select: 'name avatar status' }
+            ]);
 
             // envia mensagem pro destinatário, se ele estiver conectado
             for (const [socketId, userId] of this.clients.entries()) {
                 if (userId === dto.to) {
-                    this.server.to(socketId).emit('message_sent', saved);
+                    this.server.to(socketId).emit('message_sent', populated);
                 }
             }
 
             // também devolve pro remetente
-            client.emit('message_sent', saved);
+            client.emit('message_sent', populated);
         } catch (err) {
             client.emit('error', err.message || 'Erro ao enviar mensagem');
         }
