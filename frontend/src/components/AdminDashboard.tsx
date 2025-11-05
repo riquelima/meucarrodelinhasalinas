@@ -21,6 +21,7 @@ interface User {
   name: string;
   email: string;
   role: 'passageiro' | 'motorista' | 'anunciante' | 'admin';
+  avatar?: string;
   createdAt?: { $date: string } | string;
   updatedAt?: { $date: string } | string;
 }
@@ -1202,9 +1203,22 @@ export function AdminDashboard() {
                     <Card key={user._id} className="bg-card border-border">
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between">
-                          <div>
-                            <div className="text-foreground">{user.name}</div>
-                            <div className="text-muted-foreground text-xs mt-1">{user.email}</div>
+                          <div className="flex items-center gap-3">
+                            {user.avatar ? (
+                              <img 
+                                src={user.avatar} 
+                                alt={user.name}
+                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                <Users className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-foreground">{user.name}</div>
+                              <div className="text-muted-foreground text-xs mt-1">{user.email}</div>
+                            </div>
                           </div>
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground">
@@ -1244,7 +1258,22 @@ export function AdminDashboard() {
                       <TableBody>
                         {filteredUsers.map((user) => (
                           <TableRow key={user._id}>
-                            <TableCell className="text-foreground">{user.name}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                {user.avatar ? (
+                                  <img 
+                                    src={user.avatar} 
+                                    alt={user.name}
+                                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                    <Users className="w-5 h-5 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <span className="text-foreground">{user.name}</span>
+                              </div>
+                            </TableCell>
                             <TableCell className="text-muted-foreground">{user.email}</TableCell>
                             <TableCell>
                               <Badge variant="outline">{getUserRoleLabel(user.role)}</Badge>
