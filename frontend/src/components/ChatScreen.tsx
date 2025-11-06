@@ -36,17 +36,14 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [contactInfo, setContactInfo] = useState<User | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [isUserScrolling, setIsUserScrolling] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewContent, setReviewContent] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const hasScrolledToBottomRef = useRef(false);
-  const lastMessageCountRef = useRef(0);
-  const shouldAutoScrollRef = useRef(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const isUserScrollingRef = useRef(false);
+  const autoScrollEnabledRef = useRef(true);
 
   const token = useMemo(() => localStorage.getItem('token') || undefined, []);
   const myId = useMemo(() => {
@@ -71,12 +68,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
         const conv = await fetchConversations(myId, token);
         if (cancelled) return;
         setConversations(conv);
-        if (startUserId) {
-          const has = conv.some(c => c.id === startUserId);
-          if (has) {
-            setSelectedChat(startUserId);
-          }
-        }
       } catch (err) {
         console.error('Erro ao carregar conversas', err);
       } finally {
@@ -85,7 +76,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     }
     load();
     return () => { cancelled = true; };
-  }, [myId, token, startUserId]);
+  }, [myId, token]);
 
   // Socket: escuta novas mensagens e historico
   useEffect(() => {
@@ -93,16 +84,13 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     const offHistory = onHistory((msgs) => {
       const sorted = [...msgs].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
       setMessages(sorted);
-      lastMessageCountRef.current = sorted.length;
-      setShouldAutoScroll(false);
-      shouldAutoScrollRef.current = false;
       
-      if (!hasScrolledToBottomRef.current) {
+      // Scroll apenas se o usuário não estiver rolando manualmente
+      if (autoScrollEnabledRef.current && !isUserScrollingRef.current) {
         requestAnimationFrame(() => {
           if (messagesContainerRef.current) {
             const container = messagesContainerRef.current;
             container.scrollTop = container.scrollHeight;
-            hasScrolledToBottomRef.current = true;
           }
         });
       }
@@ -134,13 +122,15 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
           
           const filtered = prev.filter(m => !m._id?.startsWith('temp-') || m.content !== msg.content);
           const newMessages = [...filtered, msg];
-          lastMessageCountRef.current = newMessages.length;
           
+          // Scroll automático apenas se o usuário estiver próximo do final
           requestAnimationFrame(() => {
-            if (messagesContainerRef.current && !isUserScrollingRef.current) {
+            if (messagesContainerRef.current && autoScrollEnabledRef.current && !isUserScrollingRef.current) {
               const container = messagesContainerRef.current;
               const { scrollHeight, clientHeight, scrollTop } = container;
-              if (scrollHeight - scrollTop - clientHeight < 150) {
+              const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+              // Se estiver a menos de 150px do final, rola automaticamente
+              if (distanceFromBottom < 150) {
                 container.scrollTop = scrollHeight - clientHeight;
               }
             }
@@ -203,11 +193,8 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
 
   useEffect(() => {
     if (!connected || !selectedChat) return;
-    setShouldAutoScroll(false);
-    setIsUserScrolling(false);
-    hasScrolledToBottomRef.current = false;
-    shouldAutoScrollRef.current = false;
     isUserScrollingRef.current = false;
+    autoScrollEnabledRef.current = true;
     try {
       requestHistory({ withUserId: selectedChat, limit: 50 });
     } catch (err) {
@@ -222,6 +209,18 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
       case 'advertiser': return 'bg-purple-400';
     }
   };
+
+  // Filtrar conversas baseado no termo de busca
+  const filteredConversations = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return conversations;
+    }
+    const term = searchTerm.toLowerCase();
+    return conversations.filter(conv => 
+      conv.name.toLowerCase().includes(term) ||
+      conv.lastMessage.toLowerCase().includes(term)
+    );
+  }, [conversations, searchTerm]);
 
   const currentChat = useMemo(() => {
     const chat = conversations.find(c => c.id === selectedChat);
@@ -322,12 +321,15 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     
     setMessages((prev) => [...prev, optimisticMessage]);
     
-    requestAnimationFrame(() => {
-      if (messagesContainerRef.current) {
-        const container = messagesContainerRef.current;
-        container.scrollTop = container.scrollHeight;
-      }
-    });
+    // Scroll automático ao enviar mensagem
+    if (autoScrollEnabledRef.current) {
+      requestAnimationFrame(() => {
+        if (messagesContainerRef.current) {
+          const container = messagesContainerRef.current;
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+    }
     
     setConversations((prev) => {
       const messagePreview = messageContent.length > 50 
@@ -390,16 +392,25 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
 
   // If App requested to start chat with a specific user, handle it here
   useEffect(() => {
-    if (startUserId) {
-      // Try to find name from existing conversations if not provided
-      const existing = conversations.find(c => c.id === startUserId);
-      const name = startUserName || existing?.name || 'Usuário';
-      const avatar = startUserAvatar || existing?.photo;
+    if (!startUserId) return;
+    
+    // Se ainda está carregando, aguarda
+    if (isLoading) return;
+    
+    // Verifica se a conversa já existe
+    const existing = conversations.find(c => c.id === startUserId);
+    if (existing) {
+      // Conversa já existe, apenas seleciona
+      setSelectedChat(startUserId);
+    } else {
+      // Cria nova conversa se não existir
+      const name = startUserName || 'Usuário';
+      const avatar = startUserAvatar;
       handleStartNewChat(startUserId, name, avatar);
-      onStartChatConsumed?.();
     }
+    onStartChatConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startUserId]);
+  }, [startUserId, conversations, isLoading]);
 
   useEffect(() => {
     let wasHidden = false;
@@ -418,12 +429,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   }, []);
 
   useEffect(() => {
-    if (!startUserId) {
-      setSelectedChat(null);
-    }
-  }, [startUserId]);
-
-  useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
@@ -433,21 +438,31 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     const handleScroll = () => {
       const currentScrollTop = container.scrollTop;
       const { scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollHeight - currentScrollTop - clientHeight < 100;
+      const distanceFromBottom = scrollHeight - currentScrollTop - clientHeight;
+      const isNearBottom = distanceFromBottom < 100;
       const isScrollingUp = currentScrollTop < lastScrollTop;
 
-      setIsUserScrolling(true);
-      setShouldAutoScroll(isNearBottom && !isScrollingUp);
-      isUserScrollingRef.current = true;
-      shouldAutoScrollRef.current = isNearBottom && !isScrollingUp;
+      // Se o usuário está rolando manualmente, desabilita scroll automático
+      if (isScrollingUp || distanceFromBottom > 100) {
+        isUserScrollingRef.current = true;
+        autoScrollEnabledRef.current = false;
+      } else if (isNearBottom) {
+        // Se voltou para perto do final, reabilita scroll automático
+        autoScrollEnabledRef.current = true;
+      }
 
       lastScrollTop = currentScrollTop;
 
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
-        setIsUserScrolling(false);
+        // Após parar de rolar, verifica se está no final
+        const finalScrollTop = container.scrollTop;
+        const finalDistance = container.scrollHeight - finalScrollTop - container.clientHeight;
+        if (finalDistance < 100) {
+          autoScrollEnabledRef.current = true;
+        }
         isUserScrollingRef.current = false;
-      }, 100);
+      }, 200);
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
@@ -516,18 +531,20 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
               <Input
                 placeholder="Buscar conversas..."
                 className="pl-10 bg-input-background h-9 text-sm border-border"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             <ScrollArea className="flex-1">
               <div className="pb-2">
-                {conversations.length === 0 ? (
+                {filteredConversations.length === 0 ? (
                   <div className="flex items-center justify-center p-8 text-muted-foreground text-sm">
-                    Nenhuma conversa ainda
+                    {searchTerm.trim() ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
                   </div>
                 ) : (
-                  conversations.map((conv) => (
+                  filteredConversations.map((conv) => (
                     <button
                       key={conv.id}
                       onClick={() => setSelectedChat(conv.id)}
