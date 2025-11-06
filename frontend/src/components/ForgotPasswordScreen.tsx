@@ -4,6 +4,7 @@ import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Car, ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { API_BASE_URL } from "../config/api";
 
 interface ForgotPasswordScreenProps {
   onNavigate: (screen: string) => void;
@@ -22,7 +23,7 @@ export function ForgotPasswordScreen({ onNavigate }: ForgotPasswordScreenProps) 
       setError("");
       
       try {
-        const response = await fetch("http://localhost:3000/auth/forgot-password", {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

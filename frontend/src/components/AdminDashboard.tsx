@@ -15,6 +15,7 @@ import { jwtDecode } from "jwt-decode";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import { toast } from "sonner";
+import { API_BASE_URL } from "../config/api";
 
 interface User {
   _id: string;
@@ -72,8 +73,6 @@ interface AdFilters {
   category: string;
   search: string;
 }
-
-const API_BASE_URL = 'http://localhost:3000';
 
 const getAuthToken = (): string => {
   const token = localStorage.getItem("token");

@@ -11,6 +11,7 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config/api";
 
 interface PassengerDashboardProps {
   onNavigate: (screen: string) => void;
@@ -32,7 +33,7 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
     async function fetchDrivers() {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:3000/users/motoristas", {
+        const res = await fetch(`${API_BASE_URL}/users/motoristas`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",

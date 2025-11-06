@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { CarouselApi } from "./ui/carousel";
 import Loading from "../loading";
 import ErrorPage from "../error";
+import { API_BASE_URL } from "../config/api";
 
 interface Ad {
   _id: string;
@@ -28,7 +29,7 @@ export function AdCarousel() {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch("http://localhost:3000/ads/random");
+        const res = await fetch(`${API_BASE_URL}/ads/random`);
         if (!res.ok) throw new Error("Falha ao carregar anúncios");
         const data: Ad[] = await res.json();
 
@@ -78,7 +79,7 @@ export function AdCarousel() {
 
   const handleClickAds = async (numberPhone: any, _id: any) => {
     try {
-      await fetch(`http://localhost:3000/ads/${_id}/clicks`, {
+      await fetch(`${API_BASE_URL}/ads/${_id}/clicks`, {
         method: "PATCH",
       });
 

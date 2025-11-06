@@ -22,6 +22,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { AdCarousel } from "./AdCarousel";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { API_BASE_URL } from "../config/api";
 
 interface AdvertiserDashboardProps {
   userId: string;
@@ -61,7 +62,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
 
         const decodedToken = jwtDecode<DecodedToken>(token);
         userId = decodedToken.sub;
-        const response = await fetch(`http://localhost:3000/ads/my/${userId}`, {
+        const response = await fetch(`${API_BASE_URL}/ads/my/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -154,7 +155,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
 
 
     try {
-      const response = await fetch(`http://localhost:3000/ads/${userId}/anuncios`, {
+      const response = await fetch(`${API_BASE_URL}/ads/${userId}/anuncios`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -188,7 +189,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/ads/${_id}/status`, {
+      const response = await fetch(`${API_BASE_URL}/ads/${_id}/status`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -275,7 +276,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/ads/${editingAd._id}`, {
+        const response = await fetch(`${API_BASE_URL}/ads/${editingAd._id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

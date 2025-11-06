@@ -10,6 +10,7 @@ import { AdCarousel } from "./AdCarousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { API_BASE_URL } from "../config/api";
 
 interface HomeDashboardProps {
   onNavigate: (screen: string) => void;
@@ -32,7 +33,7 @@ export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboa
     const fetchDrivers = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3000/users/motoristas/profile-views/top', {
+        const response = await fetch(`${API_BASE_URL}/users/motoristas/profile-views/top`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) throw new Error("Erro ao buscar motoristas");
@@ -53,7 +54,7 @@ export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboa
     const fetchBlogs = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3000/blogs/home', {
+        const response = await fetch(`${API_BASE_URL}/blogs/home`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
