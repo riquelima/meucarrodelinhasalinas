@@ -34,6 +34,9 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const lastMessageCountRef = useRef(0);
+  const shouldAutoScrollRef = useRef(true);
+  const isUserScrollingRef = useRef(false);
 
   const token = useMemo(() => localStorage.getItem('token') || undefined, []);
   const myId = useMemo(() => {
@@ -78,6 +81,9 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     const offHistory = onHistory((msgs) => {
       const sorted = [...msgs].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
       setMessages(sorted);
+      lastMessageCountRef.current = sorted.length;
+      setShouldAutoScroll(false);
+      shouldAutoScrollRef.current = false;
     });
     const offMsg = onMessageSent((msg) => {
       const fromId = typeof msg.from === 'string' ? msg.from : msg.from?._id;
@@ -85,7 +91,28 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
       if (!selectedChat || !myId) return;
       const isInChat = (fromId === selectedChat && toId === myId) || (fromId === myId && toId === selectedChat);
       if (isInChat) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          const newMessages = [...prev, msg];
+          lastMessageCountRef.current = newMessages.length;
+          
+          setTimeout(() => {
+            if (messagesContainerRef.current && !isUserScrollingRef.current) {
+              const container = messagesContainerRef.current;
+              const { scrollHeight, clientHeight, scrollTop } = container;
+              const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+              
+              if (isNearBottom && messagesEndRef.current) {
+                const targetScroll = scrollHeight - clientHeight;
+                container.scrollTo({
+                  top: targetScroll,
+                  behavior: 'smooth'
+                });
+              }
+            }
+          }, 100);
+          
+          return newMessages;
+        });
       }
     });
     const offError = onError((e) => console.error('Socket error', e));
@@ -98,8 +125,10 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
 
   useEffect(() => {
     if (!connected || !selectedChat) return;
-    setShouldAutoScroll(true);
+    setShouldAutoScroll(false);
     setIsUserScrolling(false);
+    shouldAutoScrollRef.current = false;
+    isUserScrollingRef.current = false;
     try {
       requestHistory({ withUserId: selectedChat, limit: 50 });
     } catch (err) {
@@ -242,12 +271,15 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
 
       setIsUserScrolling(true);
       setShouldAutoScroll(isNearBottom && !isScrollingUp);
+      isUserScrollingRef.current = true;
+      shouldAutoScrollRef.current = isNearBottom && !isScrollingUp;
 
       lastScrollTop = currentScrollTop;
 
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         setIsUserScrolling(false);
+        isUserScrollingRef.current = false;
       }, 150);
     };
 
@@ -258,35 +290,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     };
   }, [selectedChat]);
 
-  useEffect(() => {
-    if (messages.length > 0 && messagesContainerRef.current) {
-      setTimeout(() => {
-        if (messagesContainerRef.current && shouldAutoScroll && !isUserScrolling) {
-          const container = messagesContainerRef.current;
-          const { scrollHeight, clientHeight, scrollTop } = container;
-          const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-          if (isNearBottom || scrollTop === 0) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-          }
-        }
-      }, 150);
-    }
-  }, [messages.length, selectedChat]);
-
-  useEffect(() => {
-    if (shouldAutoScroll && messages.length > 0 && !isUserScrolling) {
-      setTimeout(() => {
-        if (messagesEndRef.current && messagesContainerRef.current) {
-          const container = messagesContainerRef.current;
-          const { scrollHeight, clientHeight } = container;
-          const isNearBottom = scrollHeight - container.scrollTop - clientHeight < 200;
-          if (isNearBottom) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }
-      }, 100);
-    }
-  }, [messages, shouldAutoScroll, isUserScrolling]);
 
   // Load real contact info when chat is selected
   useEffect(() => {
@@ -355,13 +358,15 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                       }`}
                     >
                       <Avatar className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0">
-                        <ImageWithFallback
-                          src={conv.photo}
-                          alt={conv.name}
-                          className="w-full h-full object-cover"
-                        />
+                        {conv.photo && conv.photo !== 'https://via.placeholder.com/150x150.png?text=Sem+Foto' ? (
+                          <ImageWithFallback
+                            src={conv.photo}
+                            alt={conv.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : null}
                         <AvatarFallback className={getColor()}>
-                          {conv.name.charAt(0)}
+                          {conv.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 text-left overflow-hidden min-w-0">
@@ -372,8 +377,8 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-muted-foreground text-xs lg:text-sm truncate">{conv.lastMessage || 'Nenhuma mensagem'}</p>
                           {conv.unread > 0 && (
-                            <span className={`${getColor()} text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center flex-shrink-0 px-1.5`}>
-                              {conv.unread}
+                            <span className={`${getColor()} text-white text-xs font-semibold rounded-full min-w-[20px] h-5 flex items-center justify-center flex-shrink-0 px-1.5`}>
+                              {conv.unread > 99 ? '99+' : conv.unread}
                             </span>
                           )}
                         </div>
@@ -608,7 +613,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                     );
                   })
                 )}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} style={{ scrollMargin: 0 }} />
             </div>
           </div>
 
