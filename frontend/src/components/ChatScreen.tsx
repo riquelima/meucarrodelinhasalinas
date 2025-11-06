@@ -29,8 +29,11 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [contactInfo, setContactInfo] = useState<User | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
 
   const token = useMemo(() => localStorage.getItem('token') || undefined, []);
   const myId = useMemo(() => {
@@ -60,10 +63,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
             setSelectedChat(startUserId);
             return;
           }
-        }
-        // Se nenhum selecionado, mostra a primeira conversa
-        if (!selectedChat && !startUserId && conv.length > 0) {
-          setSelectedChat(conv[0].id);
         }
       } catch (err) {
         console.error('Erro ao carregar conversas', err);
@@ -97,9 +96,10 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     };
   }, [connected, onHistory, onMessageSent, onError, selectedChat, myId]);
 
-  // Carrega historico de mensagens baseado no chat selecionado
   useEffect(() => {
     if (!connected || !selectedChat) return;
+    setShouldAutoScroll(true);
+    setIsUserScrolling(false);
     try {
       requestHistory({ withUserId: selectedChat, limit: 50 });
     } catch (err) {
@@ -205,10 +205,88 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startUserId]);
 
-  // Auto scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    let wasHidden = false;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        wasHidden = true;
+      } else if (wasHidden) {
+        setSelectedChat(null);
+        wasHidden = false;
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!startUserId) {
+      setSelectedChat(null);
+    }
+  }, [startUserId]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    let scrollTimeout: NodeJS.Timeout;
+    let lastScrollTop = container.scrollTop;
+
+    const handleScroll = () => {
+      const currentScrollTop = container.scrollTop;
+      const { scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - currentScrollTop - clientHeight < 100;
+      const isScrollingUp = currentScrollTop < lastScrollTop;
+
+      setIsUserScrolling(true);
+      setShouldAutoScroll(isNearBottom && !isScrollingUp);
+
+      lastScrollTop = currentScrollTop;
+
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setIsUserScrolling(false);
+      }, 150);
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (messages.length > 0 && messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesContainerRef.current && shouldAutoScroll && !isUserScrolling) {
+          const container = messagesContainerRef.current;
+          const { scrollHeight, clientHeight, scrollTop } = container;
+          const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+          if (isNearBottom || scrollTop === 0) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+          }
+        }
+      }, 150);
+    }
+  }, [messages.length, selectedChat]);
+
+  useEffect(() => {
+    if (shouldAutoScroll && messages.length > 0 && !isUserScrolling) {
+      setTimeout(() => {
+        if (messagesEndRef.current && messagesContainerRef.current) {
+          const container = messagesContainerRef.current;
+          const { scrollHeight, clientHeight } = container;
+          const isNearBottom = scrollHeight - container.scrollTop - clientHeight < 200;
+          if (isNearBottom) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      }, 100);
+    }
+  }, [messages, shouldAutoScroll, isUserScrolling]);
 
   // Load real contact info when chat is selected
   useEffect(() => {
@@ -322,14 +400,17 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <Avatar className="w-10 h-10 flex-shrink-0">
-                <ImageWithFallback
-                  src={currentChat?.photo || startUserAvatar || 'https://via.placeholder.com/150x150.png?text=Sem+Foto'}
-                  alt={currentChat?.name || ''}
-                  className="w-full h-full object-cover"
-                />
-                <AvatarFallback className={getColor()}>
-                  {currentChat?.name.charAt(0)}
-                </AvatarFallback>
+                {contactInfo?.avatar ? (
+                  <ImageWithFallback
+                    src={contactInfo.avatar}
+                    alt={currentChat?.name || ''}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <AvatarFallback className={getColor()}>
+                    {currentChat?.name.charAt(0)}
+                  </AvatarFallback>
+                )}
               </Avatar>
               <div className="flex-1 min-w-0">
                 <h3 className="text-foreground text-sm lg:text-base font-semibold truncate">
@@ -476,7 +557,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
           </Dialog>          
 
           {/* Messages - Scrollable area */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
             <div className="p-3 lg:p-4 space-y-4">
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center min-h-[200px] text-muted-foreground text-sm">
