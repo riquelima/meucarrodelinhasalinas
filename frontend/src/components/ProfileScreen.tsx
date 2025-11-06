@@ -11,6 +11,8 @@ import { jwtDecode } from "jwt-decode";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import { Switch } from "./ui/switch";
+import { getReviewsByUser, type Review } from "../services/reviewsApi";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface UserProfile {
   _id: string;
@@ -201,6 +203,8 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
   const [confirmPassword, setConfirmPassword] = useState('');
   const [adminStats, setAdminStats] = useState<{ usersCount: number; adsCount: number; blogsCount: number } | null>(null);
   const [advertiserStats, setAdvertiserStats] = useState<AdvertiserStats | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   const userType = getUserTypeFromRole(profile.role);
 
@@ -225,6 +229,21 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
             setAdvertiserStats(stats);
           } catch (err) {
             console.warn('Erro ao carregar estatísticas de anunciante:', err);
+          }
+        }
+
+        if (data.role !== 'admin' && data.role !== 'anunciante') {
+          try {
+            setLoadingReviews(true);
+            const token = localStorage.getItem("token");
+            if (token) {
+              const reviewsData = await getReviewsByUser(data._id, token);
+              setReviews(reviewsData);
+            }
+          } catch (err) {
+            console.warn('Erro ao carregar avaliações:', err);
+          } finally {
+            setLoadingReviews(false);
           }
         }
       } catch (err: any) {
@@ -869,43 +888,74 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
         {userType !== 'advertiser' && userType !== 'admin' && (
           <Card className="shadow-sm bg-card border-border">
             <CardHeader className="p-4">
-              <CardTitle className="text-foreground text-base lg:text-lg">Avaliações Recentes</CardTitle>
+              <CardTitle className="text-foreground text-base lg:text-lg">Avaliações</CardTitle>
               <CardDescription className="text-xs lg:text-sm">O que outros usuários dizem sobre você</CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <div className="space-y-3 lg:space-y-4">
-                {[1, 2, 3].map((review) => (
-                  <div key={review} className="flex gap-3 lg:gap-4 pb-3 lg:pb-4 border-b border-border last:border-0">
-                    <Avatar className="w-10 h-10">
-                      <AvatarFallback className={getColor()}>
-                        {review === 1 ? 'M' : review === 2 ? 'A' : 'P'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                        <span className="text-foreground text-sm lg:text-base truncate">
-                          {review === 1 ? 'Maria Santos' : review === 2 ? 'Ana Costa' : 'Pedro Lima'}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className="w-3 h-3 lg:w-4 lg:h-4 fill-yellow-400 text-yellow-400"
+              {loadingReviews ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Nenhuma avaliação ainda
+                </div>
+              ) : (
+                <div className="space-y-3 lg:space-y-4">
+                  {reviews.map((review) => {
+                    const reviewer = typeof review.reviewerId === 'object' ? review.reviewerId : null;
+                    const reviewerName = reviewer?.name || 'Usuário';
+                    const reviewerAvatar = reviewer?.avatar;
+                    const initial = reviewerName.charAt(0).toUpperCase();
+                    
+                    return (
+                      <div key={review._id} className="flex gap-3 lg:gap-4 pb-3 lg:pb-4 border-b border-border last:border-0">
+                        <Avatar className="w-10 h-10 flex-shrink-0">
+                          {reviewerAvatar ? (
+                            <ImageWithFallback
+                              src={reviewerAvatar}
+                              alt={reviewerName}
+                              className="w-full h-full object-cover"
                             />
-                          ))}
+                          ) : null}
+                          <AvatarFallback className={getColor()}>
+                            {initial}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                            <span className="text-foreground text-sm lg:text-base truncate">
+                              {reviewerName}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-3 h-3 lg:w-4 lg:h-4 ${
+                                    star <= review.rating
+                                      ? 'fill-yellow-400 text-yellow-400'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-muted-foreground text-xs lg:text-sm">
+                            {review.content}
+                          </p>
+                          <p className="text-muted-foreground text-xs mt-1">
+                            {new Date(review.createdAt).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}
+                          </p>
                         </div>
                       </div>
-                      <p className="text-muted-foreground text-xs lg:text-sm">
-                        {review === 1
-                          ? 'Excelente motorista, muito pontual e carro sempre limpo!'
-                          : review === 2
-                            ? 'Muito educado e dirigiu com bastante cuidado. Recomendo!'
-                            : 'Ótima experiência, já marquei para a próxima semana.'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

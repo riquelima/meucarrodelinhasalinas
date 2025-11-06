@@ -14,9 +14,10 @@ import { useState, useEffect } from "react";
 
 interface PassengerDashboardProps {
   onNavigate: (screen: string) => void;
+  onStartChat?: (userId: string, userName: string, userAvatar?: string) => void;
 }
 
-export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
+export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboardProps) {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [departureFilter, setDepartureFilter] = useState("");
   const [destinationFilter, setDestinationFilter] = useState("");
@@ -186,7 +187,8 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
                           alt={driver.name}
                           className="w-full h-full object-cover"
                         />
-                      ) : (
+                      ) : null}
+                      {!driver.avatar && (
                         <AvatarFallback className="bg-green-600 text-white">
                           {driver.name?.split(" ").map((n: string) => n[0]).join("")}
                         </AvatarFallback>
@@ -240,13 +242,28 @@ export function PassengerDashboard({ onNavigate }: PassengerDashboardProps) {
                     </span>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9">
+                    <Button 
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm h-9"
+                      onClick={() => {
+                        if (onStartChat) {
+                          onStartChat(driver._id || driver.id, driver.name, driver.avatar);
+                        } else {
+                          onNavigate('chat');
+                        }
+                      }}
+                    >
                       Solicitar Vaga
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => onNavigate("chat")}
+                      onClick={() => {
+                        if (onStartChat) {
+                          onStartChat(driver._id || driver.id, driver.name, driver.avatar);
+                        } else {
+                          onNavigate("chat");
+                        }
+                      }}
                       className="h-9 w-9"
                     >
                       <Phone className="w-4 h-4" />

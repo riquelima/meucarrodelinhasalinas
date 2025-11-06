@@ -173,7 +173,8 @@ export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboa
                     <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
                       {driver.avatar ? (
                         <ImageWithFallback src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
-                      ) : (
+                      ) : null}
+                      {!driver.avatar && (
                         <AvatarFallback className="bg-green-600 text-white">
                           {driver.name.split(' ').map((n: any[]) => n[0]).join('')}
                         </AvatarFallback>
