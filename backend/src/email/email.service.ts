@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Resend } from 'resend';
 import { welcomeTemplate } from './templates/welcome.template';
 import { resetPasswordTemplate } from './templates/reset-password.template';
+import { supportContactTemplate } from './templates/support-contact.template';
 
 @Injectable()
 export class EmailService {
@@ -35,12 +36,7 @@ export class EmailService {
       to: 'andreymatheus92@gmail.com',
       replyTo: fromEmail,
       subject: `📩 Novo contato via site`,
-      html: `
-        <h2>Novo contato via site</h2>
-        <p><strong>Remetente:</strong> ${fromEmail}</p>
-        <p><strong>Mensagem:</strong></p>
-        <p>${message.replace(/\n/g, '<br/>')}</p>
-      `,
+      html: supportContactTemplate(fromEmail, message),
     });
   }
 }
