@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Resend } from 'resend';
 import { welcomeTemplate } from './templates/welcome.template';
 import { resetPasswordTemplate } from './templates/reset-password.template';
+import { supportContactTemplate } from './templates/support-contact.template';
 
 @Injectable()
 export class EmailService {
@@ -26,6 +27,16 @@ export class EmailService {
       to,
       subject: 'Redefinição de Senha',
       html: resetPasswordTemplate(userName, token, process.env.CLIENT_URL || 'http://localhost:5173'),
+    });
+  }
+
+  async sendSupportEmail(fromEmail: string, message: string) {
+    return this.resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: '',
+      replyTo: fromEmail,
+      subject: `📩 Novo contato via site`,
+      html: supportContactTemplate(fromEmail, message),
     });
   }
 }
