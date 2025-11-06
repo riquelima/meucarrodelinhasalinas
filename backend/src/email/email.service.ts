@@ -33,7 +33,7 @@ export class EmailService {
   async sendSupportEmail(fromEmail: string, message: string) {
     return this.resend.emails.send({
       from: 'onboarding@resend.dev',
-      to: 'andreymatheus92@gmail.com',
+      to: '',
       replyTo: fromEmail,
       subject: `📩 Novo contato via site`,
       html: supportContactTemplate(fromEmail, message),

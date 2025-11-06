@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Send, CheckCircle, AlertTriangle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
@@ -10,6 +10,14 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"success" | "error" | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setEmail("");
+      setMessage("");
+      setStatus(null);
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -28,8 +36,6 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
       if (!response.ok) throw new Error();
 
       setStatus("success");
-      setEmail("");
-      setMessage("");
       setTimeout(() => onClose(), 1800);
     } catch {
       setStatus("error");
@@ -39,12 +45,12 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
       <Card className="relative w-full max-w-md bg-card border border-border shadow-xl animate-scale-in">
 
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition"
+          className="absolute top-2 right-2 p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition"
         >
           <X className="w-5 h-5" />
         </button>
@@ -63,10 +69,10 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
               <Label className="text-sm">Seu e-mail</Label>
               <Input
                 type="email"
-                placeholder="voce@email.com"
-                className="bg-input-background h-11"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="voce@email.com"
+                className="bg-input-background h-11"
                 required
               />
             </div>
@@ -74,19 +80,15 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
             <div className="space-y-2">
               <Label className="text-sm">Mensagem</Label>
               <textarea
-                className="w-full bg-input-background border border-border rounded-md p-3 text-sm h-24 resize-none"
-                placeholder="Descreva sua dúvida..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                placeholder="Descreva sua dúvida..."
+                className="w-full bg-input-background border border-border rounded-md p-3 text-sm h-24 resize-none"
                 required
               />
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 h-11 gap-2"
-            >
+            <Button disabled={loading} type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-11 gap-2">
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
               ) : (
@@ -98,7 +100,6 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
             </Button>
           </form>
 
-          {/* Status Feedback */}
           {status === "success" && (
             <div className="mt-4 flex items-center justify-center gap-2 text-green-600 text-sm">
               <CheckCircle className="w-5 h-5" /> Mensagem enviada com sucesso!
@@ -111,6 +112,7 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           )}
         </CardContent>
+
       </Card>
     </div>
   );
