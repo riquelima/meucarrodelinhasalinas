@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Send, Search, MoreVertical, ArrowLeft, Info } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useChatSocket, ChatMessage } from "../hooks/useChatSocket";
 import { fetchConversations, type Conversation } from "../services/chatApi";
@@ -88,30 +88,86 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     const offMsg = onMessageSent((msg) => {
       const fromId = typeof msg.from === 'string' ? msg.from : msg.from?._id;
       const toId = typeof msg.to === 'string' ? msg.to : msg.to?._id;
-      if (!selectedChat || !myId) return;
-      const isInChat = (fromId === selectedChat && toId === myId) || (fromId === myId && toId === selectedChat);
+      if (!myId) return;
+      
+      const otherUserId = fromId === myId ? toId : fromId;
+      const isInChat = selectedChat && ((fromId === selectedChat && toId === myId) || (fromId === myId && toId === selectedChat));
+      
       if (isInChat) {
         setMessages((prev) => {
-          const newMessages = [...prev, msg];
+          const msgId = typeof msg.from === 'string' ? msg.from : msg.from?._id;
+          const msgTime = new Date(msg.createdAt || 0).getTime();
+          
+          const exists = prev.some(m => {
+            const mId = typeof m.from === 'string' ? m.from : m.from?._id;
+            if (mId !== msgId || m.content !== msg.content) return false;
+            const mTime = new Date(m.createdAt || 0).getTime();
+            return Math.abs(mTime - msgTime) < 2000;
+          });
+          
+          if (exists) {
+            const filtered = prev.filter(m => !m._id?.startsWith('temp-') || m.content !== msg.content);
+            return filtered;
+          }
+          
+          const filtered = prev.filter(m => !m._id?.startsWith('temp-') || m.content !== msg.content);
+          const newMessages = [...filtered, msg];
           lastMessageCountRef.current = newMessages.length;
           
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             if (messagesContainerRef.current && !isUserScrollingRef.current) {
               const container = messagesContainerRef.current;
               const { scrollHeight, clientHeight, scrollTop } = container;
-              const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
-              
-              if (isNearBottom && messagesEndRef.current) {
-                const targetScroll = scrollHeight - clientHeight;
-                container.scrollTo({
-                  top: targetScroll,
-                  behavior: 'smooth'
-                });
+              if (scrollHeight - scrollTop - clientHeight < 150) {
+                container.scrollTop = scrollHeight - clientHeight;
               }
             }
-          }, 100);
+          });
           
           return newMessages;
+        });
+      }
+      
+      if (otherUserId) {
+        setConversations((prev) => {
+          const messagePreview = msg.content.length > 50 
+            ? msg.content.substring(0, 50) + '...' 
+            : msg.content;
+          
+          const existingIndex = prev.findIndex(c => c.id === otherUserId);
+          
+          if (existingIndex !== -1) {
+            const updated = [...prev];
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              lastMessage: fromId === myId ? `Você: ${messagePreview}` : messagePreview,
+              time: formatTime(msg.createdAt),
+              unread: fromId === myId ? (selectedChat === otherUserId ? 0 : updated[existingIndex].unread) : (selectedChat === otherUserId ? 0 : updated[existingIndex].unread + 1),
+            };
+            
+            if (existingIndex > 0) {
+              const [moved] = updated.splice(existingIndex, 1);
+              return [moved, ...updated];
+            }
+            
+            return updated;
+          }
+          
+          const fromUser = typeof msg.from === 'object' ? msg.from : null;
+          const toUser = typeof msg.to === 'object' ? msg.to : null;
+          const otherUser = fromId === myId ? toUser : fromUser;
+          
+          const newConv: Conversation = {
+            id: otherUserId,
+            name: otherUser?.name || 'Usuário',
+            lastMessage: fromId === myId ? `Você: ${msg.content}` : msg.content,
+            time: formatTime(msg.createdAt),
+            unread: fromId === myId ? 0 : (selectedChat === otherUserId ? 0 : 1),
+            photo: otherUser?.avatar || '',
+            status: 'offline',
+          };
+          
+          return [newConv, ...prev];
         });
       }
     });
@@ -158,15 +214,15 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     return chat;
   }, [conversations, selectedChat, messages, myId]);
 
-  const formatTime = (date?: string | Date) => {
+  const formatTime = useCallback((date?: string | Date) => {
     if (!date) return '';
     const d = new Date(date);
     const hh = d.getHours().toString().padStart(2, '0');
     const mm = d.getMinutes().toString().padStart(2, '0');
     return `${hh}:${mm}`;
-  };
+  }, []);
 
-  const formatMessageDate = (date?: string | Date) => {
+  const formatMessageDate = useCallback((date?: string | Date) => {
     if (!date) return '';
     const d = new Date(date);
     const now = new Date();
@@ -182,19 +238,78 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     } else {
       return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
-  };
+  }, []);
 
-  const shouldShowDateSeparator = (currentMsg: ChatMessage, prevMsg: ChatMessage | null) => {
+  const shouldShowDateSeparator = useCallback((currentMsg: ChatMessage, prevMsg: ChatMessage | null) => {
     if (!prevMsg) return true;
     const currentDate = currentMsg.createdAt ? new Date(currentMsg.createdAt).toDateString() : '';
     const prevDate = prevMsg.createdAt ? new Date(prevMsg.createdAt).toDateString() : '';
     return currentDate !== prevDate;
-  };
+  }, []);
 
   const isDriver = (user: User | null) => {
     if (!user) return false;
     const role = Array.isArray(user.role) ? user.role[0] : user.role;
     return role === 'motorista' || role === 'driver';
+  };
+
+  const handleSendMessage = (content: string) => {
+    if (!selectedChat || !content.trim() || !myId) return;
+    
+    const messageContent = content.trim();
+    setInput("");
+    
+    const optimisticMessage: ChatMessage = {
+      _id: `temp-${Date.now()}`,
+      from: myId,
+      to: selectedChat,
+      content: messageContent,
+      isRead: false,
+      createdAt: new Date(),
+    };
+    
+    setMessages((prev) => [...prev, optimisticMessage]);
+    
+    requestAnimationFrame(() => {
+      if (messagesContainerRef.current) {
+        const container = messagesContainerRef.current;
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    
+    setConversations((prev) => {
+      const messagePreview = messageContent.length > 50 
+        ? messageContent.substring(0, 50) + '...' 
+        : messageContent;
+      
+      const existingIndex = prev.findIndex(c => c.id === selectedChat);
+      
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          lastMessage: `Você: ${messagePreview}`,
+          time: formatTime(new Date()),
+          unread: updated[existingIndex].unread,
+        };
+        
+        if (existingIndex > 0) {
+          const [moved] = updated.splice(existingIndex, 1);
+          return [moved, ...updated];
+        }
+        
+        return updated;
+      }
+      
+      return prev;
+    });
+    
+    try {
+      sendPrivateMessage(selectedChat, messageContent);
+    } catch (err) {
+      console.error('Erro ao enviar mensagem', err);
+      setMessages((prev) => prev.filter(m => m._id !== optimisticMessage._id));
+    }
   };
 
   const handleStartNewChat = (userId: string, userName: string, userAvatar?: string) => {
@@ -280,7 +395,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
       scrollTimeout = setTimeout(() => {
         setIsUserScrolling(false);
         isUserScrollingRef.current = false;
-      }, 150);
+      }, 100);
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
@@ -377,7 +492,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-muted-foreground text-xs lg:text-sm truncate">{conv.lastMessage || 'Nenhuma mensagem'}</p>
                           {conv.unread > 0 && (
-                            <span className={`${getColor()} text-white text-xs font-semibold rounded-full min-w-[20px] h-5 flex items-center justify-center flex-shrink-0 px-1.5`}>
+                            <span className={`${getColor()} text-white text-xs font-semibold rounded-full min-w-[20px] h-5 flex items-center justify-center flex-shrink-0 ${conv.unread > 9 ? 'px-1.5' : 'px-0 w-5'}`}>
                               {conv.unread > 99 ? '99+' : conv.unread}
                             </span>
                           )}
@@ -627,27 +742,13 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    if (!selectedChat || !input.trim()) return;
-                    try {
-                      sendPrivateMessage(selectedChat, input.trim());
-                      setInput("");
-                    } catch (err) {
-                      console.error('Erro ao enviar mensagem', err);
-                    }
+                    handleSendMessage(input);
                   }
                 }}
               />
               <Button
                 className={`${getColor()} h-10 w-10 lg:w-auto lg:px-4`}
-                onClick={() => {
-                  if (!selectedChat || !input.trim()) return;
-                  try {
-                    sendPrivateMessage(selectedChat, input.trim());
-                    setInput("");
-                  } catch (err) {
-                    console.error('Erro ao enviar mensagem', err);
-                  }
-                }}
+                onClick={() => handleSendMessage(input)}
                 disabled={!connected}
               >
                 <Send className="w-4 h-4" />
