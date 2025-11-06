@@ -187,7 +187,8 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
                           alt={driver.name}
                           className="w-full h-full object-cover"
                         />
-                      ) : (
+                      ) : null}
+                      {!driver.avatar && (
                         <AvatarFallback className="bg-green-600 text-white">
                           {driver.name?.split(" ").map((n: string) => n[0]).join("")}
                         </AvatarFallback>

@@ -1,7 +1,7 @@
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
@@ -42,8 +42,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const [reviewContent, setReviewContent] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const isUserScrollingRef = useRef(false);
-  const autoScrollEnabledRef = useRef(true);
 
   const token = useMemo(() => localStorage.getItem('token') || undefined, []);
   const myId = useMemo(() => {
@@ -84,16 +82,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     const offHistory = onHistory((msgs) => {
       const sorted = [...msgs].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
       setMessages(sorted);
-      
-      // Scroll apenas se o usuário não estiver rolando manualmente
-      if (autoScrollEnabledRef.current && !isUserScrollingRef.current) {
-        requestAnimationFrame(() => {
-          if (messagesContainerRef.current) {
-            const container = messagesContainerRef.current;
-            container.scrollTop = container.scrollHeight;
-          }
-        });
-      }
     });
     const offMsg = onMessageSent((msg) => {
       const fromId = typeof msg.from === 'string' ? msg.from : msg.from?._id;
@@ -122,19 +110,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
           
           const filtered = prev.filter(m => !m._id?.startsWith('temp-') || m.content !== msg.content);
           const newMessages = [...filtered, msg];
-          
-          // Scroll automático apenas se o usuário estiver próximo do final
-          requestAnimationFrame(() => {
-            if (messagesContainerRef.current && autoScrollEnabledRef.current && !isUserScrollingRef.current) {
-              const container = messagesContainerRef.current;
-              const { scrollHeight, clientHeight, scrollTop } = container;
-              const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-              // Se estiver a menos de 150px do final, rola automaticamente
-              if (distanceFromBottom < 150) {
-                container.scrollTop = scrollHeight - clientHeight;
-              }
-            }
-          });
           
           return newMessages;
         });
@@ -193,8 +168,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
 
   useEffect(() => {
     if (!connected || !selectedChat) return;
-    isUserScrollingRef.current = false;
-    autoScrollEnabledRef.current = true;
     try {
       requestHistory({ withUserId: selectedChat, limit: 50 });
     } catch (err) {
@@ -321,16 +294,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     
     setMessages((prev) => [...prev, optimisticMessage]);
     
-    // Scroll automático ao enviar mensagem
-    if (autoScrollEnabledRef.current) {
-      requestAnimationFrame(() => {
-        if (messagesContainerRef.current) {
-          const container = messagesContainerRef.current;
-          container.scrollTop = container.scrollHeight;
-        }
-      });
-    }
-    
     setConversations((prev) => {
       const messagePreview = messageContent.length > 50 
         ? messageContent.substring(0, 50) + '...' 
@@ -428,49 +391,6 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     };
   }, []);
 
-  useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    let scrollTimeout: NodeJS.Timeout;
-    let lastScrollTop = container.scrollTop;
-
-    const handleScroll = () => {
-      const currentScrollTop = container.scrollTop;
-      const { scrollHeight, clientHeight } = container;
-      const distanceFromBottom = scrollHeight - currentScrollTop - clientHeight;
-      const isNearBottom = distanceFromBottom < 100;
-      const isScrollingUp = currentScrollTop < lastScrollTop;
-
-      // Se o usuário está rolando manualmente, desabilita scroll automático
-      if (isScrollingUp || distanceFromBottom > 100) {
-        isUserScrollingRef.current = true;
-        autoScrollEnabledRef.current = false;
-      } else if (isNearBottom) {
-        // Se voltou para perto do final, reabilita scroll automático
-        autoScrollEnabledRef.current = true;
-      }
-
-      lastScrollTop = currentScrollTop;
-
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        // Após parar de rolar, verifica se está no final
-        const finalScrollTop = container.scrollTop;
-        const finalDistance = container.scrollHeight - finalScrollTop - container.clientHeight;
-        if (finalDistance < 100) {
-          autoScrollEnabledRef.current = true;
-        }
-        isUserScrollingRef.current = false;
-      }, 200);
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, [selectedChat]);
 
 
   // Load real contact info when chat is selected
@@ -554,10 +474,10 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                     >
                       <Avatar className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0">
                         {conv.photo && conv.photo !== 'https://via.placeholder.com/150x150.png?text=Sem+Foto' ? (
-                          <ImageWithFallback
+                          <AvatarImage
                             src={conv.photo}
                             alt={conv.name}
-                            className="w-full h-full object-cover"
+                            className="object-cover"
                           />
                         ) : null}
                         <AvatarFallback className={getColor()}>
@@ -573,7 +493,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                           <p className="text-muted-foreground text-xs lg:text-sm truncate">{conv.lastMessage || 'Nenhuma mensagem'}</p>
                           {conv.unread > 0 && (
                             <span className={`${getColor()} text-white text-xs font-semibold rounded-full min-w-[20px] h-5 flex items-center justify-center flex-shrink-0 ${conv.unread > 9 ? 'px-1.5' : 'px-0 w-5'}`}>
-                              {conv.unread > 99 ? '99+' : conv.unread}
+                              {conv.unread > 9 ? '9+' : conv.unread}
                             </span>
                           )}
                         </div>
