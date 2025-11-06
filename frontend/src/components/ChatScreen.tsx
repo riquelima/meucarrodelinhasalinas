@@ -137,6 +137,37 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     return `${hh}:${mm}`;
   };
 
+  const formatMessageDate = (date?: string | Date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const messageDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+    if (messageDate.getTime() === today.getTime()) {
+      return 'Hoje';
+    } else if (messageDate.getTime() === yesterday.getTime()) {
+      return 'Ontem';
+    } else {
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+  };
+
+  const shouldShowDateSeparator = (currentMsg: ChatMessage, prevMsg: ChatMessage | null) => {
+    if (!prevMsg) return true;
+    const currentDate = currentMsg.createdAt ? new Date(currentMsg.createdAt).toDateString() : '';
+    const prevDate = prevMsg.createdAt ? new Date(prevMsg.createdAt).toDateString() : '';
+    return currentDate !== prevDate;
+  };
+
+  const isDriver = (user: User | null) => {
+    if (!user) return false;
+    const role = Array.isArray(user.role) ? user.role[0] : user.role;
+    return role === 'motorista' || role === 'driver';
+  };
+
   const handleStartNewChat = (userId: string, userName: string, userAvatar?: string) => {
     //Validar se ja existe essa conversa
     const existingConv = conversations.find(c => c.id === userId);
@@ -179,7 +210,21 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load real contact info when dialog opens
+  // Load real contact info when chat is selected
+  useEffect(() => {
+    const load = async () => {
+      if (!selectedChat || !token) return;
+      try {
+        const data = await fetchUserById(selectedChat, token);
+        setContactInfo(data);
+      } catch (e) {
+        console.error('Falha ao carregar informações do contato', e);
+      }
+    };
+    load();
+  }, [selectedChat, token]);
+
+  // Load contact info when dialog opens (refresh)
   useEffect(() => {
     const load = async () => {
       if (!showDriverInfo || !selectedChat || !token) return;
@@ -193,17 +238,19 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
         setLoadingInfo(false);
       }
     };
-    load();
+    if (showDriverInfo) {
+      load();
+    }
   }, [showDriverInfo, selectedChat, token]);
 
   return (
     <div className="pt-16 bg-background h-screen flex flex-col">
       <Card className="shadow-sm flex flex-col lg:flex-row overflow-hidden bg-card border-border mx-0 lg:mx-8 mt-0 lg:mt-8 flex-1 h-[calc(100vh-4rem)] lg:h-[calc(100vh-8rem)]">
         {/* Conversations list - Hidden on mobile when chat is selected */}
-        <div className={`w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border ${selectedChat ? 'hidden lg:block' : 'block'}`}>
-          <div className="p-3 lg:p-4 border-b border-border">
+        <div className={`w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border flex flex-col ${selectedChat ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="p-3 lg:p-4 border-b border-border flex-shrink-0">
             <div className="flex items-center justify-between mb-3 lg:mb-4">
-              <h2 className="text-foreground text-base lg:text-lg">Mensagens</h2>
+              <h2 className="text-foreground text-base lg:text-lg font-semibold">Mensagens</h2>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -213,48 +260,58 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
               />
             </div>
           </div>
-          <ScrollArea className="h-[calc(100vh-200px)] lg:h-[calc(100%-8rem)]">
-            {conversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => setSelectedChat(conv.id)}
-                className={`w-full p-3 lg:p-4 flex items-start gap-3 hover:bg-accent transition-colors border-b border-border ${
-                  selectedChat === conv.id ? 'bg-accent' : ''
-                }`}
-              >
-                <Avatar className="w-10 h-10 lg:w-12 lg:h-12">
-                  <ImageWithFallback
-                    src={conv.photo}
-                    alt={conv.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <AvatarFallback className={getColor()}>
-                    {conv.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left overflow-hidden">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-foreground truncate text-sm lg:text-base">{conv.name}</span>
-                    <span className="text-muted-foreground text-xs">{conv.time}</span>
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+            <ScrollArea className="flex-1">
+              <div className="pb-2">
+                {conversations.length === 0 ? (
+                  <div className="flex items-center justify-center p-8 text-muted-foreground text-sm">
+                    Nenhuma conversa ainda
                   </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs lg:text-sm truncate">{conv.lastMessage}</p>
-                    {conv.unread > 0 && (
-                      <span className={`${getColor()} text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 ml-2`}>
-                        {conv.unread}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </ScrollArea>
+                ) : (
+                  conversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => setSelectedChat(conv.id)}
+                      className={`w-full p-3 lg:p-4 flex items-start gap-3 hover:bg-accent transition-colors border-b border-border ${
+                        selectedChat === conv.id ? 'bg-accent' : ''
+                      }`}
+                    >
+                      <Avatar className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0">
+                        <ImageWithFallback
+                          src={conv.photo}
+                          alt={conv.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <AvatarFallback className={getColor()}>
+                          {conv.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 text-left overflow-hidden min-w-0">
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <span className="text-foreground truncate text-sm lg:text-base font-medium">{conv.name}</span>
+                          <span className="text-muted-foreground text-xs flex-shrink-0">{conv.time}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-muted-foreground text-xs lg:text-sm truncate">{conv.lastMessage || 'Nenhuma mensagem'}</p>
+                          {conv.unread > 0 && (
+                            <span className={`${getColor()} text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center flex-shrink-0 px-1.5`}>
+                              {conv.unread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
 
         {/* Chat area */}
         <div className={`flex-1 min-h-0 flex flex-col ${selectedChat ? 'flex' : 'hidden lg:flex'}`}>
-          {/* Chat header */}
-          <div className="p-3 lg:p-4 border-b border-border flex items-center justify-between bg-card">
+          {/* Chat header - Fixed */}
+          <div className="p-3 lg:p-4 border-b border-border flex items-center justify-between bg-card flex-shrink-0">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <Button
                 onClick={() => setSelectedChat(null)}
@@ -275,21 +332,23 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <h3 className="text-foreground text-sm lg:text-base truncate">
-                  {currentChat?.name}
+                <h3 className="text-foreground text-sm lg:text-base font-semibold truncate">
+                  {currentChat?.name || 'Usuário'}
                 </h3>
-                <div className="flex items-center gap-2">
-                  <Badge 
-                    variant="secondary" 
-                    className={`text-xs border-0 ${
-                      currentChat?.status === 'online' 
-                        ? 'bg-green-600/20 text-green-400' 
-                        : 'bg-gray-600/20 text-gray-400'
-                    }`}
-                  >
-                    {currentChat?.status === 'online' ? 'Online' : 'Offline'}
-                  </Badge>
-                </div>
+                {contactInfo && isDriver(contactInfo) && (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs border-0 ${
+                        currentChat?.status === 'online' 
+                          ? 'bg-green-600/20 text-green-400' 
+                          : 'bg-gray-600/20 text-gray-400'
+                      }`}
+                    >
+                      {currentChat?.status === 'online' ? 'Online' : 'Offline'}
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
             <DropdownMenu>
@@ -331,17 +390,19 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-foreground">{currentChat?.name}</h3>
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs border-0 mt-1 ${
-                        currentChat?.status === 'online' 
-                          ? 'bg-green-600/20 text-green-400' 
-                          : 'bg-gray-600/20 text-gray-400'
-                      }`}
-                    >
-                      {currentChat?.status === 'online' ? 'Online' : 'Offline'}
-                    </Badge>
+                    <h3 className="text-foreground font-semibold">{currentChat?.name || 'Usuário'}</h3>
+                    {contactInfo && isDriver(contactInfo) && (
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs border-0 mt-1 ${
+                          currentChat?.status === 'online' 
+                            ? 'bg-green-600/20 text-green-400' 
+                            : 'bg-gray-600/20 text-gray-400'
+                        }`}
+                      >
+                        {currentChat?.status === 'online' ? 'Online' : 'Offline'}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
@@ -414,48 +475,66 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
             </DialogContent>
           </Dialog>          
 
-          {/* Messages */}
-          <ScrollArea className="flex-1 min-h-0 p-3 lg:p-4">
-            <div className="space-y-3 lg:space-y-4">
-              {messages.map((message) => {
-                const fromId = typeof message.from === 'string' ? message.from : message.from?._id;
-                const amISender = myId && fromId === myId;
-                
-                return (
-                  <div
-                    key={(message as any)._id || `${message.createdAt}-${Math.random()}`}
-                    className={`flex gap-2 ${amISender ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-3 py-2 lg:px-4 ${
-                        amISender ? `${getColor()} text-white` : 'bg-muted text-foreground'
-                      }`}
-                    >
-                      <p className="text-sm lg:text-base">{message.content}</p>
-                      <div className={`flex items-center gap-2 mt-1 ${amISender ? 'justify-end' : 'justify-start'}`}>
-                        <span
-                          className={`text-xs ${
-                            amISender ? 'text-white/80' : 'text-muted-foreground'
-                          }`}
-                        >
-                          {formatTime(message.createdAt)}
-                        </span>
-                        {amISender && (
-                          <span className="text-xs text-white/80">
-                            {message.isRead ? '✓✓' : '✓'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+          {/* Messages - Scrollable area */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="h-full overflow-y-auto">
+              <div className="p-3 lg:p-4 space-y-4">
+                {messages.length === 0 ? (
+                  <div className="flex items-center justify-center min-h-[200px] text-muted-foreground text-sm">
+                    Nenhuma mensagem ainda. Comece a conversar!
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
+                ) : (
+                  messages.map((message, index) => {
+                    const fromId = typeof message.from === 'string' ? message.from : message.from?._id;
+                    const amISender = myId && fromId === myId;
+                    const prevMessage = index > 0 ? messages[index - 1] : null;
+                    const showDateSeparator = shouldShowDateSeparator(message, prevMessage);
+                    
+                    return (
+                      <div key={(message as any)._id || `${message.createdAt}-${Math.random()}`}>
+                        {showDateSeparator && (
+                          <div className="flex items-center justify-center my-4">
+                            <div className="px-3 py-1 bg-muted/50 rounded-full">
+                              <span className="text-xs text-muted-foreground font-medium">
+                                {formatMessageDate(message.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className={`flex gap-2 ${amISender ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-3 py-2 lg:px-4 ${
+                              amISender ? `${getColor()} text-white` : 'bg-muted text-foreground'
+                            }`}
+                          >
+                            <p className="text-sm lg:text-base break-words">{message.content}</p>
+                            <div className={`flex items-center gap-2 mt-1 ${amISender ? 'justify-end' : 'justify-start'}`}>
+                              <span
+                                className={`text-xs ${
+                                  amISender ? 'text-white/80' : 'text-muted-foreground'
+                                }`}
+                              >
+                                {formatTime(message.createdAt)}
+                              </span>
+                              {amISender && (
+                                <span className="text-xs text-white/80">
+                                  {message.isRead ? '✓✓' : '✓'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
-          </ScrollArea>
+          </div>
 
-          {/* Message input */}
-          <div className="p-3 lg:p-4 border-t border-border">
+          {/* Message input - Fixed */}
+          <div className="p-3 lg:p-4 border-t border-border flex-shrink-0 bg-card">
             <div className="flex gap-2">
               <Input
                 placeholder="Digite sua mensagem..."
