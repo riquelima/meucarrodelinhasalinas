@@ -32,4 +32,12 @@ export class ReviewsService {
     async findForDriver(driverId: string) {
         return this.reviewModel.find({ driverId }).lean();
     }
+
+    async findByReceiver(receiverId: string) {
+        return this.reviewModel
+            .find({ receiverId })
+            .populate('reviewerId', 'name avatar')
+            .sort({ createdAt: -1 })
+            .lean();
+    }
 }

@@ -6,13 +6,17 @@ import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Send, Search, MoreVertical, ArrowLeft, Info } from "lucide-react";
+import { Send, Search, MoreVertical, ArrowLeft, Info, Star } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useChatSocket, ChatMessage } from "../hooks/useChatSocket";
 import { fetchConversations, type Conversation } from "../services/chatApi";
 import { fetchUserById, type User } from "../services/usersApi";
+import { createReview } from "../services/reviewsApi";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
+import { toast } from "sonner";
 
 interface ChatScreenProps {
   userType: 'passenger' | 'driver' | 'advertiser' | 'admin';
@@ -34,6 +38,12 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewContent, setReviewContent] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const hasScrolledToBottomRef = useRef(false);
   const lastMessageCountRef = useRef(0);
   const shouldAutoScrollRef = useRef(true);
   const isUserScrollingRef = useRef(false);
@@ -56,6 +66,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     let cancelled = false;
     async function load() {
       if (!myId || !token) return;
+      setIsLoading(true);
       try {
         const conv = await fetchConversations(myId, token);
         if (cancelled) return;
@@ -64,11 +75,12 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
           const has = conv.some(c => c.id === startUserId);
           if (has) {
             setSelectedChat(startUserId);
-            return;
           }
         }
       } catch (err) {
         console.error('Erro ao carregar conversas', err);
+      } finally {
+        setIsLoading(false);
       }
     }
     load();
@@ -84,6 +96,16 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
       lastMessageCountRef.current = sorted.length;
       setShouldAutoScroll(false);
       shouldAutoScrollRef.current = false;
+      
+      if (!hasScrolledToBottomRef.current) {
+        requestAnimationFrame(() => {
+          if (messagesContainerRef.current) {
+            const container = messagesContainerRef.current;
+            container.scrollTop = container.scrollHeight;
+            hasScrolledToBottomRef.current = true;
+          }
+        });
+      }
     });
     const offMsg = onMessageSent((msg) => {
       const fromId = typeof msg.from === 'string' ? msg.from : msg.from?._id;
@@ -183,6 +205,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     if (!connected || !selectedChat) return;
     setShouldAutoScroll(false);
     setIsUserScrolling(false);
+    hasScrolledToBottomRef.current = false;
     shouldAutoScrollRef.current = false;
     isUserScrollingRef.current = false;
     try {
@@ -251,6 +274,35 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     if (!user) return false;
     const role = Array.isArray(user.role) ? user.role[0] : user.role;
     return role === 'motorista' || role === 'driver';
+  };
+
+  const handleSubmitReview = async () => {
+    if (!selectedChat || !myId || !token || reviewRating === 0 || !reviewContent.trim()) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      await createReview({
+        reviewerId: myId,
+        receiverId: selectedChat,
+        rating: reviewRating,
+        content: reviewContent.trim(),
+      }, token);
+
+      toast.success('Avaliação enviada com sucesso!');
+      setShowReviewModal(false);
+      setReviewRating(0);
+      setReviewContent("");
+      
+      const data = await fetchUserById(selectedChat, token);
+      setContactInfo(data);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar avaliação');
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const handleSendMessage = (content: string) => {
@@ -439,6 +491,17 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     }
   }, [showDriverInfo, selectedChat, token]);
 
+  if (isLoading) {
+    return (
+      <div className="pt-16 bg-background h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground">Carregando conversas...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-16 bg-background h-screen flex flex-col">
       <Card className="shadow-sm flex flex-col lg:flex-row overflow-hidden bg-card border-border mx-0 lg:mx-8 mt-0 lg:mt-8 flex-1 h-[calc(100vh-4rem)] lg:h-[calc(100vh-8rem)]">
@@ -563,6 +626,10 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                   <Info className="w-4 h-4 mr-2" />
                   Ver Informações
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowReviewModal(true)} className="cursor-pointer">
+                  <Star className="w-4 h-4 mr-2" />
+                  Avaliar
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -581,13 +648,15 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
               <div className="space-y-4 py-4">
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16">
-                    <ImageWithFallback
-                      src={currentChat?.photo || startUserAvatar || 'https://via.placeholder.com/150x150.png?text=Sem+Foto'}
-                      alt={currentChat?.name || ''}
-                      className="w-full h-full object-cover"
-                    />
+                    {contactInfo?.avatar ? (
+                      <ImageWithFallback
+                        src={contactInfo.avatar}
+                        alt={currentChat?.name || ''}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
                     <AvatarFallback className={getColor()}>
-                      {currentChat?.name.charAt(0)}
+                      {(currentChat?.name || 'U').charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -610,7 +679,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Avaliação:</span>
                     <span className="text-foreground">
-                      {loadingInfo ? 'Carregando…' : (contactInfo?.avgRating ?? '-')}
+                      {loadingInfo ? 'Carregando…' : (contactInfo?.avgRating ? contactInfo.avgRating.toFixed(1) : '-')}
                     </span>
                   </div>
                   {contactInfo && (
@@ -674,7 +743,76 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
                 </div>
               </div>
             </DialogContent>
-          </Dialog>          
+          </Dialog>
+
+          {/* Review Modal */}
+          <Dialog open={showReviewModal} onOpenChange={setShowReviewModal}>
+            <DialogContent className="bg-card border-border max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">
+                  Avaliar {currentChat?.name || 'Usuário'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  Avalie o usuário com uma nota de 1 a 5 estrelas e um comentário
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label className="text-foreground mb-2 block">Avaliação</Label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        className="focus:outline-none"
+                      >
+                        <Star
+                          className={`w-8 h-8 ${
+                            star <= reviewRating
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-muted-foreground'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="reviewContent" className="text-foreground mb-2 block">
+                    Comentário
+                  </Label>
+                  <Textarea
+                    id="reviewContent"
+                    placeholder="Deixe um comentário sobre sua experiência..."
+                    className="bg-input-background text-foreground border-border min-h-[100px]"
+                    value={reviewContent}
+                    onChange={(e) => setReviewContent(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowReviewModal(false);
+                      setReviewRating(0);
+                      setReviewContent("");
+                    }}
+                    disabled={isSubmittingReview}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSubmitReview}
+                    disabled={isSubmittingReview || reviewRating === 0 || !reviewContent.trim()}
+                    className={getColor()}
+                  >
+                    {isSubmittingReview ? 'Enviando...' : 'Enviar Avaliação'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Messages - Scrollable area */}
           <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">

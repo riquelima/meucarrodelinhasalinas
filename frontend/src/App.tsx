@@ -199,7 +199,7 @@ export default function App() {
         {currentScreen === 'dashboard' && userType !== 'admin' && (
           <HomeDashboard onNavigate={handleNavigate} userType={userType} onStartChat={handleStartChat} />
         )}
-        {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} />}
+        {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} onStartChat={handleStartChat} />}
         {currentScreen === 'search' && userType === 'advertiser' && (
           <AdvertiserDashboard onNavigate={handleNavigate} userId={(user as any)?.sub} />
         )}

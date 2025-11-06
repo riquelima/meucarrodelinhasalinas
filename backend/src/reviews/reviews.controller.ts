@@ -22,4 +22,9 @@ create(@Body() body: CreateReviewDto) {
 getByDriver(@Param('id') id: string) {
 return this.reviewsService.findForDriver(id);
 }
+
+@Get('user/:id')
+getByReceiver(@Param('id') id: string) {
+return this.reviewsService.findByReceiver(id);
+}
 }
