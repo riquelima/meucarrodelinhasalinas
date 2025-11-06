@@ -1,6 +1,13 @@
+import { useState } from "react";
 import { FileText, Shield, Share2, MessageSquare, Car, Instagram, MessageCircle } from "lucide-react";
+import { SupportModal } from "./SupportModal";
 
 export function Footer() {
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  
+  const handleOpenSupport = () => setIsSupportOpen(true);
+  const handleCloseSupport = () => setIsSupportOpen(false);
+  
   const currentYear = new Date().getFullYear();
 
   const legalLinks = [
@@ -10,13 +17,14 @@ export function Footer() {
 
   const communityLinks = [
     { label: "Compartilhar", icon: Share2 },
-    { label: "Fale Conosco", icon: MessageSquare },
+    { label: "Fale Conosco", icon: MessageSquare, action: handleOpenSupport },
   ];
 
   return (
     <footer className="bg-card border-t border-border mt-12">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Logo and description */}
+        
+        {/* Logo e descrição */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
@@ -29,9 +37,10 @@ export function Footer() {
           </p>
         </div>
 
-        {/* Links sections */}
+        {/* Seções de links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
-          {/* Legal Section */}
+          
+          {/* Sessão Legal */}
           <div>
             <h4 className="text-foreground mb-4 text-center sm:text-left">Legal</h4>
             <ul className="space-y-3">
@@ -39,7 +48,9 @@ export function Footer() {
                 const Icon = link.icon;
                 return (
                   <li key={link.label}>
-                    <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full sm:w-auto justify-center sm:justify-start text-sm">
+                    <button 
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full sm:w-auto justify-center sm:justify-start text-sm"
+                    >
                       <Icon className="w-4 h-4" />
                       {link.label}
                     </button>
@@ -49,7 +60,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Community Section */}
+          {/* Sessão Comunidade */}
           <div>
             <h4 className="text-foreground mb-4 text-center sm:text-left">Comunidade</h4>
             <ul className="space-y-3">
@@ -57,7 +68,10 @@ export function Footer() {
                 const Icon = link.icon;
                 return (
                   <li key={link.label}>
-                    <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full sm:w-auto justify-center sm:justify-start text-sm">
+                    <button
+                      onClick={link.action}
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full sm:w-auto justify-center sm:justify-start text-sm"
+                    >
                       <Icon className="w-4 h-4" />
                       {link.label}
                     </button>
@@ -68,7 +82,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Social Media Icons */}
+        {/* Social */}
         <div className="flex justify-center gap-4 mb-8">
           <a 
             href="https://wa.me/5591987654321" 
@@ -97,6 +111,10 @@ export function Footer() {
           </p>
         </div>
       </div>
+
+      {/* Modal de suporte */}
+      <SupportModal open={isSupportOpen} onClose={handleCloseSupport} />
+      
     </footer>
   );
 }
