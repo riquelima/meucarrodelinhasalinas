@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../config/api';
+
 export type User = {
   _id: string;
   name: string;
@@ -21,9 +23,7 @@ export type User = {
   status?: string;
 };
 
-const DEFAULT_API_URL = 'http://localhost:3000';
-
-export async function fetchAllUsers(token: string, apiUrl: string = DEFAULT_API_URL): Promise<User[]> {
+export async function fetchAllUsers(token: string, apiUrl: string = API_BASE_URL): Promise<User[]> {
   const res = await fetch(`${apiUrl}/users`, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -39,7 +39,7 @@ export async function fetchAllUsers(token: string, apiUrl: string = DEFAULT_API_
   return data as User[];
 }
 
-export async function fetchUserById(id: string, token: string, apiUrl: string = DEFAULT_API_URL): Promise<User> {
+export async function fetchUserById(id: string, token: string, apiUrl: string = API_BASE_URL): Promise<User> {
   const res = await fetch(`${apiUrl}/users/${id}`, {
     headers: {
       'Authorization': `Bearer ${token}`,

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Car } from "lucide-react";
 import ErrorPage from "../error";
 import Loading from "../loading";
+import { API_BASE_URL } from "../config/api";
 
 interface LoginScreenProps {
   onNavigate: (screen: string) => void;
@@ -24,7 +25,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
     setFormError(null);
 
     try {
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -8,6 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { Car, User, Users, Megaphone } from "lucide-react";
 import ErrorPage from "../error";
 import Loading from "../loading";
+import { API_BASE_URL } from "../config/api";
 
 interface SignupScreenProps {
   onNavigate: (screen: string) => void;
@@ -61,7 +62,7 @@ export function SignupScreen({ onNavigate }: SignupScreenProps) {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

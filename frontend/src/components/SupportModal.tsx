@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
+import { API_BASE_URL } from "../config/api";
 
 export function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [email, setEmail] = useState("");
@@ -27,7 +28,7 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
     setStatus(null);
 
     try {
-      const response = await fetch("http://localhost:3000/support", {
+      const response = await fetch(`${API_BASE_URL}/support`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, message }),

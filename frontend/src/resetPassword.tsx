@@ -4,6 +4,7 @@ import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { Car, ArrowLeft, CheckCircle } from "lucide-react";
+import { API_BASE_URL } from "./config/api";
 
 interface ResetPasswordScreenProps {
   onNavigate: (screen: string) => void;
@@ -54,7 +55,7 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/auth/reset-password", {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

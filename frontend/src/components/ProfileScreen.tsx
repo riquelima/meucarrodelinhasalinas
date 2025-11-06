@@ -13,6 +13,7 @@ import { ScrollToTop } from "./ScrollToTop";
 import { Switch } from "./ui/switch";
 import { getReviewsByUser, type Review } from "../services/reviewsApi";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { API_BASE_URL } from "../config/api";
 
 interface UserProfile {
   _id: string;
@@ -95,7 +96,7 @@ const fetchUserProfile = async (): Promise<UserProfile> => {
     throw new Error("Token inválido ou expirado.");
   }
 
-  const response = await fetch(`http://localhost:3000/users/${userId}`, {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -118,13 +119,13 @@ const fetchAdminStats = async (): Promise<{ usersCount: number; adsCount: number
   }
 
   const [usersResponse, adsResponse, blogsResponse] = await Promise.all([
-    fetch(`http://localhost:3000/users`, {
+    fetch(`${API_BASE_URL}/users`, {
       headers: { "Authorization": `Bearer ${token}` }
     }),
-    fetch(`http://localhost:3000/ads/count`, {
+    fetch(`${API_BASE_URL}/ads/count`, {
       headers: { "Authorization": `Bearer ${token}` }
     }),
-    fetch(`http://localhost:3000/blogs/count/all`, {
+    fetch(`${API_BASE_URL}/blogs/count/all`, {
       headers: { "Authorization": `Bearer ${token}` }
     })
   ]);
@@ -142,7 +143,7 @@ const fetchAdvertiserStats = async (userId: string): Promise<AdvertiserStats> =>
     throw new Error("Token de autenticação não encontrado.");
   }
 
-  const response = await fetch(`http://localhost:3000/ads/${userId}/my/kpis`, {
+  const response = await fetch(`${API_BASE_URL}/ads/${userId}/my/kpis`, {
     headers: { "Authorization": `Bearer ${token}` }
   });
 
@@ -166,7 +167,7 @@ const updateUserProfile = async (userId: string, formData: FormData): Promise<Us
     throw new Error("Token de autenticação não encontrado.");
   }
 
-  const response = await fetch(`http://localhost:3000/users/${userId}`, {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
     method: 'PATCH',
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -447,7 +448,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
     userId = decodedToken.sub;
 
 
-    const response = await fetch(`http://localhost:3000/users/status/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/users/status/${userId}`, {
       method: 'PATCH',
       headers: {
         "Authorization": `Bearer ${token}`,

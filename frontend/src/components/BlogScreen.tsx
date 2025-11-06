@@ -10,6 +10,7 @@ import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "./ui/carousel";
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 
 export function BlogScreen() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -26,7 +27,7 @@ export function BlogScreen() {
     async function fetchPosts() {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:3000/blogs", {
+        const res = await fetch(`${API_BASE_URL}/blogs`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -79,7 +80,7 @@ export function BlogScreen() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:3000/blogs/${post._id}`, {
+      const res = await fetch(`${API_BASE_URL}/blogs/${post._id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

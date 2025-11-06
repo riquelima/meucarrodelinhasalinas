@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../config/api';
+
 export type Conversation = {
   id: string;
   name: string;
@@ -8,9 +10,7 @@ export type Conversation = {
   status: 'online' | 'offline';
 };
 
-const DEFAULT_API_URL = 'http://localhost:3000';
-
-export async function fetchConversations(userId: string, token: string, apiUrl: string = DEFAULT_API_URL): Promise<Conversation[]> {
+export async function fetchConversations(userId: string, token: string, apiUrl: string = API_BASE_URL): Promise<Conversation[]> {
   const res = await fetch(`${apiUrl}/messages/conversations/${userId}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -26,7 +26,7 @@ export async function fetchConversations(userId: string, token: string, apiUrl: 
   return data as Conversation[];
 }
 
-export async function fetchUnreadCount(userId: string, token: string, apiUrl: string = DEFAULT_API_URL): Promise<number> {
+export async function fetchUnreadCount(userId: string, token: string, apiUrl: string = API_BASE_URL): Promise<number> {
   const res = await fetch(`${apiUrl}/messages/unread-count/${userId}`, {
     headers: {
       'Authorization': `Bearer ${token}`,

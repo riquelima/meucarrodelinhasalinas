@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL } from '../config/api';
 
 export type ChatMessage = {
   _id: string;
@@ -25,7 +26,7 @@ export function useChatSocket(token?: string, options?: { apiUrl?: string; wsUrl
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
-  const wsUrl = options?.wsUrl || 'http://localhost:3000/chat';
+  const wsUrl = options?.wsUrl || `${API_BASE_URL}/chat`;
 
   const socket = useMemo(() => {
     if (!token) return null;
