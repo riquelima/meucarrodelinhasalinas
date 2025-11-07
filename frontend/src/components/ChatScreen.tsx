@@ -34,6 +34,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldScrollOnOpenRef = useRef(false);
   const [contactInfo, setContactInfo] = useState<User | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -242,6 +243,20 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     return currentDate !== prevDate;
   }, []);
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior,
+      });
+      return;
+    }
+
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  }, []);
+
   const isDriver = (user: User | null) => {
     if (!user) return false;
     const role = Array.isArray(user.role) ? user.role[0] : user.role;
@@ -406,6 +421,26 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     };
     load();
   }, [selectedChat, token]);
+
+  useEffect(() => {
+    if (selectedChat) {
+      shouldScrollOnOpenRef.current = true;
+    }
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!selectedChat) return;
+    if (!shouldScrollOnOpenRef.current) return;
+    if (messages.length === 0) return;
+
+    const frame = requestAnimationFrame(() => {
+      scrollToBottom('auto');
+    });
+
+    shouldScrollOnOpenRef.current = false;
+
+    return () => cancelAnimationFrame(frame);
+  }, [selectedChat, messages, scrollToBottom]);
 
   // Load contact info when dialog opens (refresh)
   useEffect(() => {
