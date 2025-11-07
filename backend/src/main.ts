@@ -11,10 +11,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: [
+      'http://localhost:5173',
+      'https://frontend-patient-paper-5906.fly.dev',
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
+
 
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(reflector));
@@ -37,7 +41,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT || 3000);
-//   console.log(`Aplicação rodando em http://localhost:${process.env.PORT || 3000}`);
+  const port = process.env.PORT ?? 8080;
+  await app.listen(port, '0.0.0.0');
+
+  //   console.log(`Aplicação rodando em http://localhost:${process.env.PORT || 3000}`);
 }
 bootstrap();
