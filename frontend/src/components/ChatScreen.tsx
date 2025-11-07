@@ -423,9 +423,17 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   }, [selectedChat, token]);
 
   useEffect(() => {
-    if (selectedChat) {
-      shouldScrollOnOpenRef.current = true;
-    }
+    if (!selectedChat) return;
+
+    shouldScrollOnOpenRef.current = true;
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === selectedChat
+          ? { ...conversation, unread: 0 }
+          : conversation
+      )
+    );
   }, [selectedChat]);
 
   useEffect(() => {
