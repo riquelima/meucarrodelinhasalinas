@@ -34,6 +34,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldScrollOnOpenRef = useRef(false);
   const [contactInfo, setContactInfo] = useState<User | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -242,6 +243,20 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     return currentDate !== prevDate;
   }, []);
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior,
+      });
+      return;
+    }
+
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  }, []);
+
   const isDriver = (user: User | null) => {
     if (!user) return false;
     const role = Array.isArray(user.role) ? user.role[0] : user.role;
@@ -407,6 +422,34 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
     load();
   }, [selectedChat, token]);
 
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    shouldScrollOnOpenRef.current = true;
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === selectedChat
+          ? { ...conversation, unread: 0 }
+          : conversation
+      )
+    );
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!selectedChat) return;
+    if (!shouldScrollOnOpenRef.current) return;
+    if (messages.length === 0) return;
+
+    const frame = requestAnimationFrame(() => {
+      scrollToBottom('auto');
+    });
+
+    shouldScrollOnOpenRef.current = false;
+
+    return () => cancelAnimationFrame(frame);
+  }, [selectedChat, messages, scrollToBottom]);
+
   // Load contact info when dialog opens (refresh)
   useEffect(() => {
     const load = async () => {
@@ -442,18 +485,20 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
       <Card className="shadow-sm flex flex-col lg:flex-row overflow-hidden bg-card border-border mx-0 lg:mx-8 mt-0 lg:mt-8 flex-1 h-[calc(100vh-4rem)] lg:h-[calc(100vh-8rem)]">
         {/* Conversations list - Hidden on mobile when chat is selected */}
         <div className={`w-full lg:w-80 border-b lg:border-r lg:border-b-0 border-border flex flex-col ${selectedChat ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-3 lg:p-4 border-b border-border flex-shrink-0">
-            <div className="flex items-center justify-between mb-3 lg:mb-4">
-              <h2 className="text-foreground text-base lg:text-lg font-semibold">Mensagens</h2>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar conversas..."
-                className="pl-10 bg-input-background h-9 text-sm border-border"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="sticky top-16 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/75">
+            <div className="p-3 lg:p-4 border-b border-border flex-shrink-0">
+              <div className="flex items-center justify-between mb-3 lg:mb-4">
+                <h2 className="text-foreground text-base lg:text-lg font-semibold">Mensagens</h2>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar conversas..."
+                  className="pl-10 bg-input-background h-9 text-sm border-border"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
@@ -753,7 +798,7 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
 
           {/* Messages - Scrollable area */}
           <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-            <div className="p-3 lg:p-4 space-y-4">
+            <div className="p-3 sm:p-4 space-y-4">
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center min-h-[200px] text-muted-foreground text-sm">
                     Nenhuma mensagem ainda. Comece a conversar!
@@ -808,23 +853,29 @@ export function ChatScreen({ userType, startUserId, startUserName, startUserAvat
           </div>
 
           {/* Message input - Fixed */}
-          <div className="p-3 lg:p-4 border-t border-border flex-shrink-0 bg-card">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Digite sua mensagem..."
-                className="bg-input-background h-10 text-sm border-border"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSendMessage(input);
-                  }
-                }}
-              />
+          <div
+            className="p-3 lg:p-4 border-t border-border flex-shrink-0 bg-card"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex items-center flex-1 bg-input-background border border-border rounded-full px-3 py-2 shadow-sm">
+                <Input
+                  placeholder="Digite sua mensagem..."
+                  className="flex-1 bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 text-sm h-9"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSendMessage(input);
+                    }
+                  }}
+                />
+              </div>
               <Button
-                className={`${getColor()} h-10 w-10 lg:w-auto lg:px-4`}
+                className={`${getColor()} h-11 w-11 rounded-full sm:h-10 sm:w-10 lg:w-auto lg:px-4`}
                 onClick={() => handleSendMessage(input)}
                 disabled={!connected}
+                aria-label="Enviar mensagem"
               >
                 <Send className="w-4 h-4" />
               </Button>
