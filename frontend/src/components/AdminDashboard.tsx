@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "./ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Users, FileText, Megaphone, Eye, Plus, Trash2, Filter, Loader2, Edit } from "lucide-react";
+import { Users, FileText, Megaphone, Eye, Plus, Trash2, Filter, Loader2, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { jwtDecode } from "jwt-decode";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
@@ -73,6 +73,8 @@ interface AdFilters {
   category: string;
   search: string;
 }
+
+const ITEMS_PER_PAGE = 10;
 
 const getAuthToken = (): string => {
   const token = localStorage.getItem("token");
@@ -160,13 +162,26 @@ export function AdminDashboard() {
     email: '',
     password: '',
     role: 'passageiro' as 'passageiro' | 'motorista' | 'anunciante' | 'admin',
-    number: ''
+    number: '',
+    vehicle: '',
+    licensePlate: '',
+    origin: '',
+    destination: '',
+    carColor: '',
+    seatsAvailable: '',
+    availableDays: '',
+    description: '',
+    companyName: '',
+    cnpj: ''
   });
   const [userGrowth, setUserGrowth] = useState({ currentMonth: 0, previousMonth: 0, growth: 0 });
   const [adsGrowth, setAdsGrowth] = useState({ currentMonth: 0, previousMonth: 0, growth: 0 });
   const [blogGrowth, setBlogGrowth] = useState({ currentMonth: 0, previousMonth: 0, growth: 0 });
   const [chartData, setChartData] = useState<Array<{ name: string; usuarios: number; anuncios: number; posts: number }>>([]);
   const [totalViews, setTotalViews] = useState(0);
+  const [userPage, setUserPage] = useState(1);
+  const [adPage, setAdPage] = useState(1);
+  const [blogPage, setBlogPage] = useState(1);
 
   const formatFullDate = (isoDate: string | { $date: string } | undefined) => {
     if (!isoDate) return "";
@@ -187,6 +202,47 @@ export function AdminDashboard() {
       'admin': 'Administrador'
     };
     return roleMap[role] || role;
+  };
+
+  const renderPagination = (currentPage: number, totalItems: number, onPageChange: (page: number) => void) => {
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (totalPages <= 1) return null;
+
+    const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+
+    return (
+      <div className="flex flex-col items-center gap-3 pt-6">
+        <span className="text-xs text-muted-foreground">
+          Mostrando {start}-{end} de {totalItems}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            aria-label="Página anterior"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <div className="px-4 py-1 rounded-full bg-muted text-xs text-muted-foreground font-medium">
+            Página {currentPage} de {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            aria-label="Próxima página"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const fetchUsers = async () => {
@@ -521,14 +577,105 @@ export function AdminDashboard() {
     setFilteredAds(filtered);
   }, [adFilters, ads]);
 
+  useEffect(() => {
+    setUserPage(1);
+  }, [userFilters]);
+
+  useEffect(() => {
+    setAdPage(1);
+  }, [adFilters]);
+
+  useEffect(() => {
+    setBlogPage(1);
+  }, [blogFilters]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+    if (userPage > maxPage) {
+      setUserPage(maxPage);
+    }
+  }, [filteredUsers.length, userPage]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredAds.length / ITEMS_PER_PAGE));
+    if (adPage > maxPage) {
+      setAdPage(maxPage);
+    }
+  }, [filteredAds.length, adPage]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredBlogs.length / ITEMS_PER_PAGE));
+    if (blogPage > maxPage) {
+      setBlogPage(maxPage);
+    }
+  }, [filteredBlogs.length, blogPage]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (userPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, userPage]);
+
+  const paginatedAds = useMemo(() => {
+    const start = (adPage - 1) * ITEMS_PER_PAGE;
+    return filteredAds.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAds, adPage]);
+
+  const paginatedBlogs = useMemo(() => {
+    const start = (blogPage - 1) * ITEMS_PER_PAGE;
+    return filteredBlogs.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredBlogs, blogPage]);
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingUser(true);
     try {
-      await createUser(userFormData);
+      const payload: any = {
+        name: userFormData.name.trim(),
+        email: userFormData.email.trim(),
+        password: userFormData.password,
+        role: userFormData.role,
+        number: userFormData.number.trim()
+      };
+
+      if (userFormData.role === 'motorista') {
+        const seats = Number(userFormData.seatsAvailable);
+        payload.vehicle = userFormData.vehicle.trim();
+        payload.licensePlate = userFormData.licensePlate.trim();
+        payload.origin = userFormData.origin.trim();
+        payload.destination = userFormData.destination.trim();
+        payload.carColor = userFormData.carColor.trim();
+        payload.seatsAvailable = seats;
+        payload.availableDays = userFormData.availableDays.trim();
+        if (userFormData.description.trim()) {
+          payload.description = userFormData.description.trim();
+        }
+      }
+
+      if (userFormData.role === 'anunciante') {
+        payload.companyName = userFormData.companyName.trim();
+        payload.cnpj = userFormData.cnpj.trim();
+      }
+
+      await createUser(payload);
       setIsUserModalOpen(false);
       toast.success(`Usuário ${userFormData.name} foi cadastrado com sucesso`);
-      setUserFormData({ name: '', email: '', password: '', role: 'passageiro', number: '' });
+      setUserFormData({
+        name: '',
+        email: '',
+        password: '',
+        role: 'passageiro',
+        number: '',
+        vehicle: '',
+        licensePlate: '',
+        origin: '',
+        destination: '',
+        carColor: '',
+        seatsAvailable: '',
+        availableDays: '',
+        description: '',
+        companyName: '',
+        cnpj: ''
+      });
       const usersData = await fetchUsers();
       setUsers(usersData);
     } catch (error: any) {
@@ -1108,7 +1255,7 @@ export function AdminDashboard() {
                     <span className="hidden sm:inline">Adicionar</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-card border-border max-w-md">
+                <DialogContent className="bg-card border-border w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="text-foreground">Criar Novo Usuário</DialogTitle>
                     <DialogDescription>Preencha as informações do novo usuário</DialogDescription>
@@ -1152,7 +1299,33 @@ export function AdminDashboard() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="userType">Tipo de Usuário</Label>
-                        <Select value={userFormData.role} onValueChange={(value: any) => setUserFormData({...userFormData, role: value})}>
+                        <Select
+                          value={userFormData.role}
+                          onValueChange={(value: any) =>
+                            setUserFormData({
+                              ...userFormData,
+                              role: value,
+                              ...(value !== 'motorista'
+                                ? {
+                                    vehicle: '',
+                                    licensePlate: '',
+                                    origin: '',
+                                    destination: '',
+                                    carColor: '',
+                                    seatsAvailable: '',
+                                    availableDays: '',
+                                    description: ''
+                                  }
+                                : {}),
+                              ...(value !== 'anunciante'
+                                ? {
+                                    companyName: '',
+                                    cnpj: ''
+                                  }
+                                : {})
+                            })
+                          }
+                        >
                           <SelectTrigger className="bg-input-background">
                             <SelectValue placeholder="Selecione o tipo" />
                           </SelectTrigger>
@@ -1176,6 +1349,128 @@ export function AdminDashboard() {
                           minLength={6}
                         />
                       </div>
+
+                      {userFormData.role === 'motorista' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="driverVehicle">Veículo</Label>
+                            <Input
+                              id="driverVehicle"
+                              placeholder="Ex: Honda Civic Prata"
+                              className="bg-input-background"
+                              value={userFormData.vehicle}
+                              onChange={(e) => setUserFormData({...userFormData, vehicle: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="driverLicensePlate">Placa do Veículo</Label>
+                            <Input
+                              id="driverLicensePlate"
+                              placeholder="Ex: ABC-1234"
+                              className="bg-input-background"
+                              value={userFormData.licensePlate}
+                              onChange={(e) => setUserFormData({...userFormData, licensePlate: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="driverOrigin">Ponto de Partida Principal</Label>
+                            <Input
+                              id="driverOrigin"
+                              placeholder="Ex: Centro"
+                              className="bg-input-background"
+                              value={userFormData.origin}
+                              onChange={(e) => setUserFormData({...userFormData, origin: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="driverDestination">Destino Principal</Label>
+                            <Input
+                              id="driverDestination"
+                              placeholder="Ex: Bairro Alto"
+                              className="bg-input-background"
+                              value={userFormData.destination}
+                              onChange={(e) => setUserFormData({...userFormData, destination: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="driverCarColor">Cor do Veículo</Label>
+                            <Input
+                              id="driverCarColor"
+                              placeholder="Ex: Prata, Preto, Branco"
+                              className="bg-input-background"
+                              value={userFormData.carColor}
+                              onChange={(e) => setUserFormData({...userFormData, carColor: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="driverSeats">Vagas Disponíveis</Label>
+                            <Input
+                              id="driverSeats"
+                              type="number"
+                              min={1}
+                              max={7}
+                              placeholder="Ex: 3"
+                              className="bg-input-background"
+                              value={userFormData.seatsAvailable}
+                              onChange={(e) => setUserFormData({...userFormData, seatsAvailable: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="driverSchedule">Horário Principal</Label>
+                            <Input
+                              id="driverSchedule"
+                              placeholder="Ex: 7h - 8h, Seg a Sex"
+                              className="bg-input-background"
+                              value={userFormData.availableDays}
+                              onChange={(e) => setUserFormData({...userFormData, availableDays: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="driverDescription">Descrição (Opcional)</Label>
+                            <Textarea
+                              id="driverDescription"
+                              placeholder="Conte um pouco sobre você e seu serviço..."
+                              className="bg-input-background resize-none"
+                              value={userFormData.description}
+                              onChange={(e) => setUserFormData({...userFormData, description: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {userFormData.role === 'anunciante' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="advertiserCompany">Nome da Empresa</Label>
+                            <Input
+                              id="advertiserCompany"
+                              placeholder="Nome da empresa"
+                              className="bg-input-background"
+                              value={userFormData.companyName}
+                              onChange={(e) => setUserFormData({...userFormData, companyName: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="advertiserCnpj">CNPJ</Label>
+                            <Input
+                              id="advertiserCnpj"
+                              placeholder="00.000.000/0000-00"
+                              className="bg-input-background"
+                              value={userFormData.cnpj}
+                              onChange={(e) => setUserFormData({...userFormData, cnpj: e.target.value})}
+                              required
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setIsUserModalOpen(false)}>Cancelar</Button>
@@ -1198,47 +1493,53 @@ export function AdminDashboard() {
               <>
                 {/* Mobile Cards View */}
                 <div className="block lg:hidden space-y-3">
-                  {filteredUsers.map((user) => (
-                    <Card key={user._id} className="bg-card border-border">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            {user.avatar ? (
-                              <img 
-                                src={user.avatar} 
-                                alt={user.name}
-                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                <Users className="w-5 h-5 text-muted-foreground" />
+                  {paginatedUsers.length === 0 ? (
+                    <div className="flex items-center justify-center p-6 text-muted-foreground text-sm">
+                      Nenhum usuário encontrado
+                    </div>
+                  ) : (
+                    paginatedUsers.map((user) => (
+                      <Card key={user._id} className="bg-card border-border">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              {user.avatar ? (
+                                <img 
+                                  src={user.avatar} 
+                                  alt={user.name}
+                                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                  <Users className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-foreground">{user.name}</div>
+                                <div className="text-muted-foreground text-xs mt-1">{user.email}</div>
                               </div>
-                            )}
-                            <div>
-                              <div className="text-foreground">{user.name}</div>
-                              <div className="text-muted-foreground text-xs mt-1">{user.email}</div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{getUserRoleLabel(user.role)}</span>
-                          <span>{formatFullDate(user.createdAt)}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 h-8 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
-                            onClick={() => handleDeleteClick(user._id)}
-                            disabled={getCurrentUserId() === user._id}
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Excluir
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{getUserRoleLabel(user.role)}</span>
+                            <span>{formatFullDate(user.createdAt)}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1 h-8 text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                              onClick={() => handleDeleteClick(user._id)}
+                              disabled={getCurrentUserId() === user._id}
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Excluir
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
                 </div>
 
                 {/* Desktop Table View */}
@@ -1255,47 +1556,57 @@ export function AdminDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredUsers.map((user) => (
-                          <TableRow key={user._id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                {user.avatar ? (
-                                  <img 
-                                    src={user.avatar} 
-                                    alt={user.name}
-                                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                    <Users className="w-5 h-5 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <span className="text-foreground">{user.name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{getUserRoleLabel(user.role)}</Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{formatFullDate(user.createdAt)}</TableCell>
-                            <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-red-500 hover:text-red-600 disabled:opacity-50"
-                                onClick={() => handleDeleteClick(user._id)}
-                                disabled={getCurrentUserId() === user._id}
-                                title={getCurrentUserId() === user._id ? 'Você não pode excluir sua própria conta' : 'Excluir usuário'}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                        {paginatedUsers.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground text-sm py-6">
+                              Nenhum usuário encontrado
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          paginatedUsers.map((user) => (
+                            <TableRow key={user._id}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  {user.avatar ? (
+                                    <img 
+                                      src={user.avatar} 
+                                      alt={user.name}
+                                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                      <Users className="w-5 h-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <span className="text-foreground">{user.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{getUserRoleLabel(user.role)}</Badge>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{formatFullDate(user.createdAt)}</TableCell>
+                              <TableCell>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 disabled:opacity-50"
+                                  onClick={() => handleDeleteClick(user._id)}
+                                  disabled={getCurrentUserId() === user._id}
+                                  title={getCurrentUserId() === user._id ? 'Você não pode excluir sua própria conta' : 'Excluir usuário'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </CardContent>
                 </Card>
+
+                {renderPagination(userPage, filteredUsers.length, setUserPage)}
               </>
             )}
           </TabsContent>
@@ -1511,54 +1822,63 @@ export function AdminDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
               </div>
             ) : (
-            <div className="grid grid-cols-1 gap-3">
-                {filteredAds.map((ad) => (
-                  <Card key={ad._id} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                            <h3 className="text-foreground truncate">{ad.nameCompany}</h3>
-                            {ad.isActive ? (
-                            <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Ativo</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs flex-shrink-0">Pausado</Badge>
-                          )}
-                        </div>
-                          <div className="text-muted-foreground text-xs mb-2">{ad.description}</div>
-                        <div className="flex flex-wrap gap-3 text-xs">
-                          <div className="flex items-center gap-1">
-                            <Eye className="w-3 h-3 text-blue-500" />
-                              <span className="text-muted-foreground">{ad.views?.toLocaleString() || 0} visualizações</span>
-                          </div>
-                            <div className="text-purple-400">{ad.category}</div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs"
-                            onClick={() => handleEditAd(ad)}
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Editar
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => handleDeleteAdClick(ad._id)}
-                          >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          Excluir
-                        </Button>
-                      </div>
+              <>
+                <div className="grid grid-cols-1 gap-3">
+                  {paginatedAds.length === 0 ? (
+                    <div className="flex items-center justify-center p-6 text-muted-foreground text-sm">
+                      Nenhum anúncio encontrado
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ) : (
+                    paginatedAds.map((ad) => (
+                      <Card key={ad._id} className="bg-card border-border">
+                      <CardContent className="p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                                <h3 className="text-foreground truncate">{ad.nameCompany}</h3>
+                                {ad.isActive ? (
+                                <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Ativo</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs flex-shrink-0">Pausado</Badge>
+                              )}
+                            </div>
+                              <div className="text-muted-foreground text-xs mb-2">{ad.description}</div>
+                            <div className="flex flex-wrap gap-3 text-xs">
+                              <div className="flex items-center gap-1">
+                                <Eye className="w-3 h-3 text-blue-500" />
+                                  <span className="text-muted-foreground">{ad.views?.toLocaleString() || 0} visualizações</span>
+                              </div>
+                                <div className="text-purple-400">{ad.category}</div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-xs"
+                                onClick={() => handleEditAd(ad)}
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Editar
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-xs text-red-500 hover:text-red-600"
+                                onClick={() => handleDeleteAdClick(ad._id)}
+                              >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Excluir
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                  )}
+                </div>
+                {renderPagination(adPage, filteredAds.length, setAdPage)}
+              </>
             )}
           </TabsContent>
 
@@ -1792,53 +2112,62 @@ export function AdminDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-green-500" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {filteredBlogs.map((post) => (
-                  <Card key={post._id} className="bg-card border-border">
-                    <CardContent className="p-4">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <h3 className="text-foreground truncate">{post.title}</h3>
-                            {post.isPublished ? (
-                              <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Publicado</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs flex-shrink-0">Rascunho</Badge>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            <span>{formatFullDate(post.createdAt)}</span>
-                            <div className="flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              <span>{post.views} visualizações</span>
+              <>
+                <div className="grid grid-cols-1 gap-3">
+                  {paginatedBlogs.length === 0 ? (
+                    <div className="flex items-center justify-center p-6 text-muted-foreground text-sm">
+                      Nenhuma postagem encontrada
+                    </div>
+                  ) : (
+                    paginatedBlogs.map((post) => (
+                      <Card key={post._id} className="bg-card border-border">
+                        <CardContent className="p-4">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h3 className="text-foreground truncate">{post.title}</h3>
+                                {post.isPublished ? (
+                                  <Badge className="bg-green-600/20 text-green-400 text-xs flex-shrink-0 border-0">Publicado</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs flex-shrink-0">Rascunho</Badge>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                <span>{formatFullDate(post.createdAt)}</span>
+                                <div className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  <span>{post.views} visualizações</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-xs"
+                                onClick={() => handleEditBlog(post)}
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Editar
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-xs text-red-500 hover:text-red-600"
+                                onClick={() => handleDeleteBlogClick(post._id)}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Excluir
+                              </Button>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs"
-                            onClick={() => handleEditBlog(post)}
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Editar
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-xs text-red-500 hover:text-red-600"
-                            onClick={() => handleDeleteBlogClick(post._id)}
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Excluir
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+                {renderPagination(blogPage, filteredBlogs.length, setBlogPage)}
+              </>
             )}
           </TabsContent>
         </Tabs>
