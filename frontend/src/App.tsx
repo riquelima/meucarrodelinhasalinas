@@ -15,6 +15,9 @@ import { BlogScreen } from './components/BlogScreen';
 import { ChatScreen } from './components/ChatScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { RideCalculatorScreen } from './components/RideCalculatorScreen';
+import { PrivacyPolicyScreen } from './components/PrivacyPolicyScreen';
+import { TermsOfUseScreen } from './components/TermsOfUseScreen';
+import { AdvertiserTermsScreen } from './components/AdvertiserTermsScreen';
 
 import SignupSuccessPage  from './sucess';
 import Loading from './loading';
@@ -26,6 +29,9 @@ type Screen =
   | 'signup'
   | 'signup-success'
   | 'forgot-password'
+  | 'terms-of-use'
+  | 'privacy-policy'
+  | 'advertiser-terms'
   | 'dashboard'
   | 'search'
   | 'chat'
@@ -151,6 +157,10 @@ export default function App() {
   // Telas públicas
   if (currentScreen === 'login') return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
   if (currentScreen === 'signup') return <SignupScreen onNavigate={handleNavigate} />;
+
+  if (currentScreen === 'privacy-policy') return <PrivacyPolicyScreen onNavigate={handleNavigate} />;
+  if (currentScreen === 'terms-of-use') return <TermsOfUseScreen onNavigate={handleNavigate} />;
+  if (currentScreen === 'advertiser-terms') return <AdvertiserTermsScreen onNavigate={handleNavigate} />;
 
   if (currentScreen === 'signup-success') {
     return (

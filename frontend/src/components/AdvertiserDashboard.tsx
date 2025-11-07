@@ -423,9 +423,14 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                     <div className="grid gap-1.5 leading-none">
                       <label htmlFor="terms" className="text-sm cursor-pointer">
                         Li e concordo com os{" "}
-                        <a href="#" className="text-purple-400 hover:underline" onClick={(e) => e.preventDefault()}>
-                          Termos de Uso para Anunciantes
-                        </a>
+                        <button
+                          type="button"
+                          className="text-purple-400 underline hover:text-purple-500"
+                          onClick={() => onNavigate("advertiser-terms")}
+                        >
+                          Termos de Uso
+                        </button>
+                        .
                       </label>
                       <p className="text-xs text-muted-foreground">É necessário aceitar os termos para publicar anúncios na plataforma.</p>
                     </div>

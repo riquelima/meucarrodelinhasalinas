@@ -195,8 +195,24 @@ export function SignupScreen({ onNavigate }: SignupScreenProps) {
 
             <p className="text-muted-foreground text-xs text-center mt-3">
               Ao criar uma conta, você concorda com nossos{" "}
-              <a href="#" className="text-blue-500 hover:underline">Termos de Uso</a> e{" "}
-              <a href="#" className="text-blue-500 hover:underline">Política de Privacidade</a>
+              
+              <button
+                type="button"
+                onClick={() => onNavigate("terms-of-use")}
+                className="text-blue-500 hover:underline"
+              >
+                Termos de Uso
+              </button>
+
+              {" "} e {" "}
+
+              <button
+                type="button"
+                onClick={() => onNavigate("privacy-policy")}
+                className="text-blue-500 hover:underline"
+              >
+                Política de Privacidade
+              </button>
             </p>
           </form>
 
