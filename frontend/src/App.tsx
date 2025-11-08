@@ -154,13 +154,13 @@ export default function App() {
     return <Loading />;
   }
 
-  // Telas públicas
-  if (currentScreen === 'login') return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
-  if (currentScreen === 'signup') return <SignupScreen onNavigate={handleNavigate} />;
-
   if (currentScreen === 'privacy-policy') return <PrivacyPolicyScreen onNavigate={handleNavigate} />;
   if (currentScreen === 'terms-of-use') return <TermsOfUseScreen onNavigate={handleNavigate} />;
   if (currentScreen === 'advertiser-terms') return <AdvertiserTermsScreen onNavigate={handleNavigate} />;
+
+  // Telas públicas
+  if (currentScreen === 'login') return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
+  if (currentScreen === 'signup') return <SignupScreen onNavigate={handleNavigate} />;
 
   if (currentScreen === 'signup-success') {
     return (

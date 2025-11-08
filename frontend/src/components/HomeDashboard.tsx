@@ -320,7 +320,7 @@ export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboa
         <AdCarousel />
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
 
       {/* Modal: Como Chamar um Carro */}

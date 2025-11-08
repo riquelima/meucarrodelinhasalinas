@@ -380,7 +380,7 @@ export function TermsOfUseScreen({ onNavigate }: TermsOfUseScreenProps) {
         </div>
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
     </div>
   );

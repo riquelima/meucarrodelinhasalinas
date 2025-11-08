@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FileText, Shield, Share2, MessageSquare, Car, Instagram, MessageCircle } from "lucide-react";
 import { SupportModal } from "./SupportModal";
 
-export function Footer() {
+export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   
   const handleOpenSupport = () => setIsSupportOpen(true);
@@ -11,8 +11,8 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const legalLinks = [
-    { label: "Termos de Uso", icon: FileText },
-    { label: "Política de Privacidade", icon: Shield },
+    { label: "Termos de Uso", icon: FileText, screen: "terms-of-use" },
+    { label: "Política de Privacidade", icon: Shield, screen: "privacy-policy" },
   ];
 
   const communityLinks = [
@@ -48,7 +48,8 @@ export function Footer() {
                 const Icon = link.icon;
                 return (
                   <li key={link.label}>
-                    <button 
+                    <button
+                      onClick={() => onNavigate && onNavigate(link.screen)}
                       className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full sm:w-auto justify-center sm:justify-start text-sm"
                     >
                       <Icon className="w-4 h-4" />

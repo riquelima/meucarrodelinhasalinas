@@ -489,7 +489,7 @@ export function PrivacyPolicyScreen({ onNavigate }: PrivacyPolicyScreenProps) {
         </div>
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
     </div>
   );

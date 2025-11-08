@@ -253,7 +253,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
         <AdCarousel />
       </div>
       
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
 
       {/* Modal: Como Usar Status Online/Ausente */}
