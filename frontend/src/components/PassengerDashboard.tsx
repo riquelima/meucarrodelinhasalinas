@@ -259,11 +259,21 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
                       variant="outline"
                       size="icon"
                       onClick={() => {
-                        if (onStartChat) {
-                          onStartChat(driver._id || driver.id, driver.name, driver.avatar);
-                        } else {
-                          onNavigate("chat");
+                        const phoneNumber = driver.number;
+
+                        if (!phoneNumber) {
+                          alert("Este motorista não possui WhatsApp cadastrado.");
+                          return;
                         }
+
+                        const cleanNumber = phoneNumber.replace(/\D/g, "");
+
+                        window.open(
+                          `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
+                            `Olá ${driver.name}, quero uma carona!`
+                          )}`,
+                          "_blank"
+                        );
                       }}
                       className="h-9 w-9"
                     >
