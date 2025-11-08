@@ -282,7 +282,7 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
         <AdCarousel />
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
     </div>
   );

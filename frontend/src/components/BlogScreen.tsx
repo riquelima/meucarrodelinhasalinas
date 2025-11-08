@@ -12,7 +12,11 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../config/api";
 
-export function BlogScreen() {
+interface BlogScreenProps {
+  onNavigate: (screen: string) => void;
+}
+
+export function BlogScreen({ onNavigate }: BlogScreenProps) {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -301,7 +305,7 @@ export function BlogScreen() {
           </DialogContent>
         </Dialog>
 
-        <Footer />
+        <Footer onNavigate={onNavigate}/>
         <ScrollToTop />
       </div>
     </div>

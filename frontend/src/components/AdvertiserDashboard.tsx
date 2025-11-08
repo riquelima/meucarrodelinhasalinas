@@ -529,7 +529,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
         <AdCarousel />
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
     </div>
   );

@@ -49,6 +49,7 @@ interface AdvertiserStats {
 }
 
 interface ProfileScreenProps {
+  onNavigate: (screen: string) => void;
   onLogout?: () => void;
   theme: 'light' | 'dark';
   onThemeChange: (theme: 'light' | 'dark') => void;
@@ -190,7 +191,7 @@ const updateUserProfile = async (userId: string, formData: FormData): Promise<Us
   return data;
 };
 
-export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenProps) {
+export function ProfileScreen({ onNavigate, onLogout, theme, onThemeChange }: ProfileScreenProps) {
   const [profile, setProfile] = useState<UserProfile>(initialProfileState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -962,7 +963,7 @@ export function ProfileScreen({ onLogout, theme, onThemeChange }: ProfileScreenP
         )}
       </div>
 
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
     </div>
   );

@@ -17,6 +17,10 @@ import { ScrollToTop } from "./ScrollToTop";
 import { toast } from "sonner";
 import { API_BASE_URL } from "../config/api";
 
+interface AdminDashboardProps {
+  onNavigate: (screen: string) => void;
+}
+
 interface User {
   _id: string;
   name: string;
@@ -91,7 +95,7 @@ const getCurrentUserId = (): string | null => {
   }
 };
 
-export function AdminDashboard() {
+export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAdModalOpen, setIsAdModalOpen] = useState(false);
   const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
@@ -2193,7 +2197,7 @@ export function AdminDashboard() {
         </DialogContent>
       </Dialog>
       
-      <Footer />
+      <Footer onNavigate={onNavigate}/>
       <ScrollToTop />
     </div>
   );
