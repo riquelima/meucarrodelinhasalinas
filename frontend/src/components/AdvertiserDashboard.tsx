@@ -384,8 +384,21 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
               <form onSubmit={isEditing ? handleEditAd : handleCreateAd} className="space-y-4 py-4">
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="adImages">Imagem do Anúncio *</Label>
-                    <Input id="adImages" type="file" accept="image/*" multiple className="bg-input-background" onChange={handleFileChange} />
+                    {isEditing && editingAd?.image && (
+                      <div className="space-y-2">
+                        <Label>Imagem Atual</Label>
+                        <img
+                          src={editingAd.image}
+                          alt="Imagem atual do anúncio"
+                          className="w-full rounded-lg border border-border object-cover"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Caso deseje alterar, selecione uma nova imagem abaixo.
+                        </p>
+                      </div>
+                    )}
+                    <Label htmlFor="adImages">{isEditing ? "Nova Imagem (opcional)" : "Imagem do Anúncio *"}</Label>
+                    <Input id="adImages" type="file" accept="image/*" className="bg-input-background" onChange={handleFileChange} />
                     <p className="text-xs text-muted-foreground">
                       Tamanho recomendado: 1200x628px
                     </p>
