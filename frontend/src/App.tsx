@@ -3,6 +3,7 @@ import { jwtDecode } from 'jwt-decode';
 import { LoginScreen } from './components/LoginScreen';
 import { SignupScreen } from './components/SignupScreen';
 import { ForgotPasswordScreen } from './components/ForgotPasswordScreen';
+import { ResetPasswordScreen } from './resetPassword';
 import { WelcomeDialog } from './components/WelcomeDialog';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -29,6 +30,7 @@ type Screen =
   | 'signup'
   | 'signup-success'
   | 'forgot-password'
+  | 'reset-password'
   | 'terms-of-use'
   | 'privacy-policy'
   | 'advertiser-terms'
@@ -70,6 +72,18 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  // Suporta rota direta para reset de senha via URL (ex: /reset-password?token=...)
+  useEffect(() => {
+    try {
+      const path = window.location.pathname || '';
+      if (path === '/reset-password' || path.startsWith('/reset-password')) {
+        setCurrentScreen('reset-password');
+      }
+    } catch (err) {
+      // fallback silencioso
+    }
+  }, []);
 
   // Carregar usuário do token JWT
   useEffect(() => {
@@ -161,6 +175,7 @@ export default function App() {
   // Telas públicas
   if (currentScreen === 'login') return <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />;
   if (currentScreen === 'signup') return <SignupScreen onNavigate={handleNavigate} />;
+  if (currentScreen === 'reset-password') return <ResetPasswordScreen onNavigate={handleNavigate} />;
 
   if (currentScreen === 'signup-success') {
     return (
