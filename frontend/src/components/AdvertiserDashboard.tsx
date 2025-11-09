@@ -366,6 +366,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                 setEditingAd(null);
                 setIsEditing(false);
                 setError("");
+                setIsSubmitting(false);
               }
             }}
           >
