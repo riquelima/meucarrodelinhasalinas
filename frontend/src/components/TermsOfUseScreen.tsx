@@ -8,9 +8,10 @@ import { ScrollToTop } from "./ScrollToTop";
 
 interface TermsOfUseScreenProps {
   onNavigate: (screen: string) => void;
+  userType?: 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
 }
 
-export function TermsOfUseScreen({ onNavigate }: TermsOfUseScreenProps) {
+export function TermsOfUseScreen({ onNavigate, userType }: TermsOfUseScreenProps) {
   return (
     <div className="pt-20">
       <div className="p-4 lg:p-6 xl:p-8 space-y-4 pb-8 max-w-7xl mx-auto">
@@ -21,7 +22,7 @@ export function TermsOfUseScreen({ onNavigate }: TermsOfUseScreenProps) {
 
         {/* Botão Voltar */}
         <button
-          onClick={() => onNavigate('signup')}
+          onClick={() => userType!== null ? onNavigate('dashboard') : onNavigate('login')}
           className="text-blue-500 hover:underline text-sm"
         >
           Voltar
