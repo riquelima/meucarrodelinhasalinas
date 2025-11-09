@@ -47,8 +47,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingAd, setEditingAd] = useState<any>(null);
-
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function fetchAds() {
@@ -91,6 +90,8 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
       alert("Por favor, aceite os termos de uso antes de criar um anúncio.");
       return;
     }
+
+    setIsSubmitting(true);
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -176,10 +177,10 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
     } catch (err) {
       console.error("Falha ao criar anúncio:", err);
       setError("Não foi possível criar o anúncio. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-
 
   const handleUpdateStatus = async (_id: string, status: boolean) => {
     const token = localStorage.getItem("token");
@@ -365,6 +366,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                 setEditingAd(null);
                 setIsEditing(false);
                 setError("");
+                setIsSubmitting(false);
               }
             }}
           >
@@ -380,11 +382,24 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                 <DialogTitle className="text-foreground">{isEditing ? "Editar Anúncio" : "Criar Novo Anúncio"}</DialogTitle>
                 <DialogDescription>Preencha as informações do seu anúncio</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleCreateAd} className="space-y-4 py-4">
+              <form onSubmit={isEditing ? handleEditAd : handleCreateAd} className="space-y-4 py-4">
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="adImages">Imagem do Anúncio *</Label>
-                    <Input id="adImages" type="file" accept="image/*" multiple className="bg-input-background" onChange={handleFileChange} />
+                    {isEditing && editingAd?.image && (
+                      <div className="space-y-2">
+                        <Label>Imagem Atual</Label>
+                        <img
+                          src={editingAd.image}
+                          alt="Imagem atual do anúncio"
+                          className="w-full rounded-lg border border-border object-cover"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Caso deseje alterar, selecione uma nova imagem abaixo.
+                        </p>
+                      </div>
+                    )}
+                    <Label htmlFor="adImages">{isEditing ? "Nova Imagem (opcional)" : "Imagem do Anúncio *"}</Label>
+                    <Input id="adImages" type="file" accept="image/*" className="bg-input-background" onChange={handleFileChange} />
                     <p className="text-xs text-muted-foreground">
                       Tamanho recomendado: 1200x628px
                     </p>
@@ -395,7 +410,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoria *</Label>
-                    <Select onValueChange={setSelectedCategory} defaultValue={editingAd?.category || ""}>
+                    <Select value={selectedCategory ?? ""} onValueChange={setSelectedCategory}>
                       <SelectTrigger className="bg-input-background">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
@@ -440,16 +455,12 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                 <DialogFooter>
                   <Button variant="outline" onClick={() => { setIsCreateAdModalOpen(false); setAgreedToTerms(false); }}>Cancelar</Button>
                   <Button
+                    type="submit"
                     className="bg-purple-400 hover:bg-purple-500"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      isEditing ? handleEditAd(e) : handleCreateAd(e);
-                    }}
-                    disabled={!agreedToTerms}
+                    disabled={!agreedToTerms || isSubmitting}
                   >
-                    {isEditing ? "Salvar Alterações" : "Criar Anúncio"}
+                    {isSubmitting ? "Aguarde..." : (isEditing ? "Salvar Alterações" : "Criar Anúncio")}
                   </Button>
-
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -503,6 +514,7 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                       onClick={() => {
                         setEditingAd(ad);
                         setIsEditing(true);
+                        setSelectedCategory(ad.category);
                         setIsCreateAdModalOpen(true);
                       }}
                     >
