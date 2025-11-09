@@ -7,9 +7,10 @@ import { ScrollToTop } from "./ScrollToTop";
 
 interface PrivacyPolicyScreenProps {
   onNavigate: (screen: string) => void;
+  userType?: 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
 }
 
-export function PrivacyPolicyScreen({ onNavigate }: PrivacyPolicyScreenProps) {
+export function PrivacyPolicyScreen({ onNavigate, userType }: PrivacyPolicyScreenProps) {
   return (
     <div className="pt-20">
       <div className="p-4 lg:p-6 xl:p-8 space-y-4 pb-8 max-w-7xl mx-auto">
@@ -20,7 +21,7 @@ export function PrivacyPolicyScreen({ onNavigate }: PrivacyPolicyScreenProps) {
 
         {/* Botão Voltar */}
         <button
-          onClick={() => onNavigate('signup')}
+          onClick={() => userType!== null ? onNavigate('dashboard') : onNavigate('login')}
           className="text-blue-500 hover:underline text-sm"
         >
           Voltar

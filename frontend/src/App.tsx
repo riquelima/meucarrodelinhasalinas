@@ -205,7 +205,7 @@ export default function App() {
         }}
       />
       <div className="w-full">
-        {currentScreen === 'dashboard' && userType === 'admin' && <AdminDashboard />}
+        {currentScreen === 'dashboard' && userType === 'admin' && <AdminDashboard onNavigate={handleNavigate}/>}
         {currentScreen === 'dashboard' && userType !== 'admin' && (
           <HomeDashboard onNavigate={handleNavigate} userType={userType} onStartChat={handleStartChat} />
         )}
@@ -213,7 +213,7 @@ export default function App() {
         {currentScreen === 'search' && userType === 'advertiser' && (
           <AdvertiserDashboard onNavigate={handleNavigate} userId={(user as any)?.sub} />
         )}
-        {currentScreen === 'blog' && <BlogScreen />}
+        {currentScreen === 'blog' && <BlogScreen onNavigate={handleNavigate}/>}
         {currentScreen === 'chat' && userType !== 'admin' && (
           <ChatScreen
             userType={userType}
@@ -224,7 +224,7 @@ export default function App() {
           />
         )}
         {currentScreen === 'calculator' && <RideCalculatorScreen userType={userType} />}
-        {currentScreen === 'profile' && <ProfileScreen onLogout={handleLogout} theme={theme} onThemeChange={setTheme} />}
+        {currentScreen === 'profile' && <ProfileScreen onLogout={handleLogout} theme={theme} onThemeChange={setTheme} onNavigate={handleNavigate}/>}
       </div>
       <Toaster />
     </div>
