@@ -440,16 +440,12 @@ export function AdvertiserDashboard({ userId, onNavigate }: AdvertiserDashboardP
                 <DialogFooter>
                   <Button variant="outline" onClick={() => { setIsCreateAdModalOpen(false); setAgreedToTerms(false); }}>Cancelar</Button>
                   <Button
+                    type="submit"
                     className="bg-purple-400 hover:bg-purple-500"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      isEditing ? handleEditAd(e) : handleCreateAd(e);
-                    }}
                     disabled={!agreedToTerms}
                   >
                     {isEditing ? "Salvar Alterações" : "Criar Anúncio"}
                   </Button>
-
                 </DialogFooter>
               </form>
             </DialogContent>
