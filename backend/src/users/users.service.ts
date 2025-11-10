@@ -129,7 +129,21 @@ export class UsersService {
     }
 
     async findAllMotoristas() {
-        return this.motoristaModel.find().lean().exec();
+        return this.motoristaModel.aggregate([
+            {
+                $addFields: {
+                    statusPriority: {
+                        $cond: [{ $eq: ['$status', 'online'] }, 1, 0]
+                    }
+                }
+            },
+            {
+                $sort: { statusPriority: -1, avgRating: -1, profileViews: -1 }
+            },
+            {
+                $project: { statusPriority: 0 }
+            }
+        ]).exec();
     }
 
 
@@ -178,11 +192,17 @@ export class UsersService {
 
     /** Top motoristas por visualizações */
     async getTopMotoristasByProfileViews(limit = 5) {
-        return this.motoristaModel
-            .find()
-            .sort({ profileViews: -1 })
-            .limit(limit)
-            .lean();
+        const pipeline: any[] = [
+            {
+                $addFields: {
+                    statusPriority: { $cond: [{ $eq: ['$status', 'online'] }, 1, 0] }
+                }
+            },
+            { $sort: { statusPriority: -1, avgRating: -1, profileViews: -1 } },
+            { $project: { statusPriority: 0 } }
+        ];
+
+        return this.motoristaModel.aggregate(pipeline).limit(limit).exec();
     }
 
     /** Pega o role do usuário pelo ID */
