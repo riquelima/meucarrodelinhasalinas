@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Textarea } from "./ui/textarea";
 import { Car, User, Users, Megaphone } from "lucide-react";
+import { Logo } from "./Logo";
 import ErrorPage from "../error";
 import Loading from "../loading";
 import { API_BASE_URL } from "../config/api";
@@ -98,9 +99,7 @@ export function SignupScreen({ onNavigate }: SignupScreenProps) {
     <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg max-h-[95vh] overflow-y-auto bg-card border-border">
         <CardHeader className="text-center space-y-3 p-4 lg:p-6">
-          <div className="mx-auto w-14 h-14 lg:w-16 lg:h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-            <Car className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
-          </div>
+          <Logo className="mx-auto w-14 h-14 lg:w-16 lg:h-16" />
           <CardTitle className="text-foreground text-xl lg:text-2xl">Criar Conta</CardTitle>
           <CardDescription className="text-sm">Junte-se à comunidade Meu Carro de Linha</CardDescription>
         </CardHeader>

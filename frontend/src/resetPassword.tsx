@@ -5,6 +5,7 @@ import { Label } from "./components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { Car, ArrowLeft, CheckCircle } from "lucide-react";
 import { API_BASE_URL } from "./config/api";
+import { Logo } from "./components/Logo";
 
 interface ResetPasswordScreenProps {
   onNavigate: (screen: string) => void;
@@ -83,9 +84,7 @@ export function ResetPasswordScreen({ onNavigate }: ResetPasswordScreenProps) {
     <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg bg-card border-border">
         <CardHeader className="text-center space-y-3 p-6">
-          <div className="mx-auto w-14 h-14 lg:w-16 lg:h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-            <Car className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
-          </div>
+          <Logo className="mx-auto w-14 h-14 lg:w-16 lg:h-16" />
           <CardTitle className="text-foreground text-xl lg:text-2xl">Nova Senha</CardTitle>
           <CardDescription className="text-sm">
             {isSuccess 

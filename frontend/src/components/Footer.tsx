@@ -1,12 +1,45 @@
 import { useState } from "react";
 import { FileText, Shield, Share2, MessageSquare, Car, Instagram, MessageCircle } from "lucide-react";
+import { Logo } from "./Logo";
 import { SupportModal } from "./SupportModal";
 
 export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   
   const handleOpenSupport = () => setIsSupportOpen(true);
   const handleCloseSupport = () => setIsSupportOpen(false);
+
+  const handleShare = async () => {
+    const shareUrl = window.location.origin + window.location.pathname;
+    const title = 'Meu Carro de Linha';
+    const text = `Confira ${title}: ${shareUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url: shareUrl });
+        setShareStatus('Compartilhado');
+        setTimeout(() => setShareStatus(null), 2500);
+        return;
+      } catch (err) {
+        console.debug('share cancelled or failed', err);
+      }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareStatus('Link copiado para a área de transferência');
+        setTimeout(() => setShareStatus(null), 2500);
+      }
+    } catch (err) {
+      console.debug('clipboard write failed', err);
+    }
+
+    const whatsappText = encodeURIComponent(text);
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${whatsappText}`;
+    window.open(whatsappUrl, '_blank', 'noopener');
+  };
   
   const currentYear = new Date().getFullYear();
 
@@ -16,7 +49,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
   ];
 
   const communityLinks = [
-    { label: "Compartilhar", icon: Share2 },
+    { label: "Compartilhar", icon: Share2, action: handleShare },
     { label: "Fale Conosco", icon: MessageSquare, action: handleOpenSupport },
   ];
 
@@ -27,9 +60,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
         {/* Logo e descrição */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
-              <Car className="w-6 h-6 text-white" />
-            </div>
+            <Logo className="w-10 h-10" />
             <h3 className="text-foreground">Meu Carro de Linha</h3>
           </div>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
@@ -104,6 +135,13 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
             <Instagram className="w-6 h-6 text-white" />
           </a>
         </div>
+
+        {/* Share feedback */}
+        {shareStatus && (
+          <div className="text-center mb-4">
+            <p className="text-sm text-muted-foreground">{shareStatus}</p>
+          </div>
+        )}
 
         {/* Copyright */}
         <div className="text-center pt-8 border-t border-border">

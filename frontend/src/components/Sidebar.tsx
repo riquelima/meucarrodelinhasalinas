@@ -1,4 +1,5 @@
 import { Home, Search, MessageCircle, User, Car, LogOut, BookOpen, Shield, Calculator } from "lucide-react";
+import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
@@ -95,9 +96,7 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
     <>
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 ${getColor()} rounded-xl flex items-center justify-center`}>
-            <Car className="w-6 h-6 text-white" />
-          </div>
+          <Logo className={`w-12 h-12`} bgClass={getColor()} />
           <div>
             <h3 className="text-foreground">Meu Carro de Linha</h3>
             <p className="text-muted-foreground text-sm">

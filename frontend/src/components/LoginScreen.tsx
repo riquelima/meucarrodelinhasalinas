@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Car } from "lucide-react";
+import { Logo } from "./Logo";
 import ErrorPage from "../error";
 import Loading from "../loading";
 import { API_BASE_URL } from "../config/api";
@@ -94,9 +95,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
     <div className="min-h-screen w-full bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg bg-card border-border">
         <CardHeader className="text-center space-y-3 p-6">
-          <div className="mx-auto w-14 h-14 lg:w-16 lg:h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-            <Car className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
-          </div>
+          <Logo className="mx-auto w-14 h-14 lg:w-16 lg:h-16" />
           <CardTitle className="text-foreground text-xl lg:text-2xl">Meu Carro de Linha</CardTitle>
           <CardDescription className="text-sm">
             Conectando passageiros, motoristas e anunciantes

@@ -94,19 +94,12 @@ export class BlogController {
             image2?: Express.Multer.File[];
             image3?: Express.Multer.File[];
         },
-        @Body() updateBlogDto: UpdateBlogDto & { removeImage?: string; removeImage2?: string; removeImage3?: string },
+        @Body() updateBlogDto: UpdateBlogDto,
     ) {
         const file = files.image?.[0];
         const file2 = files.image2?.[0];
         const file3 = files.image3?.[0];
-
-        const removeImage = updateBlogDto.removeImage === 'true';
-        const removeImage2 = updateBlogDto.removeImage2 === 'true';
-        const removeImage3 = updateBlogDto.removeImage3 === 'true';
-
-        const { removeImage: _, removeImage2: __, removeImage3: ___, ...dto } = updateBlogDto;
-
-        return this.blogService.update(id, dto, file, file2, file3, removeImage, removeImage2, removeImage3);
+        return this.blogService.update(id, updateBlogDto, file, file2, file3);
     }
 
 
