@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FileText, Shield, Share2, MessageSquare, Car, Instagram, MessageCircle } from "lucide-react";
+import { Logo } from "./Logo";
 import { SupportModal } from "./SupportModal";
 
 export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) {
@@ -59,9 +60,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
         {/* Logo e descrição */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
-              <Car className="w-6 h-6 text-white" />
-            </div>
+            <Logo className="w-10 h-10" />
             <h3 className="text-foreground">Meu Carro de Linha</h3>
           </div>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">

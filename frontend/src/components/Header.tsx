@@ -1,4 +1,5 @@
 import { Menu, X, Car, Sun, Moon } from "lucide-react";
+import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import { useState, useEffect } from "react";
@@ -43,13 +44,11 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
       }`}
     >
       <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
-        <div 
+          <div 
           className="flex items-center gap-3 cursor-pointer"
           onClick={() => onNavigate('dashboard')}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
-            <Car className="w-6 h-6 text-white" />
-          </div>
+          <Logo className="w-10 h-10" />
           <div>
             <h1 className="text-foreground">Meu Carro de Linha</h1>
             <p className="text-muted-foreground text-xs hidden sm:block">Salinas</p>
