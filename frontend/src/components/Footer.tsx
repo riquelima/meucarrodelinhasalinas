@@ -4,9 +4,41 @@ import { SupportModal } from "./SupportModal";
 
 export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   
   const handleOpenSupport = () => setIsSupportOpen(true);
   const handleCloseSupport = () => setIsSupportOpen(false);
+
+  const handleShare = async () => {
+    const shareUrl = window.location.origin + window.location.pathname;
+    const title = 'Meu Carro de Linha';
+    const text = `Confira ${title}: ${shareUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url: shareUrl });
+        setShareStatus('Compartilhado');
+        setTimeout(() => setShareStatus(null), 2500);
+        return;
+      } catch (err) {
+        console.debug('share cancelled or failed', err);
+      }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareStatus('Link copiado para a área de transferência');
+        setTimeout(() => setShareStatus(null), 2500);
+      }
+    } catch (err) {
+      console.debug('clipboard write failed', err);
+    }
+
+    const whatsappText = encodeURIComponent(text);
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${whatsappText}`;
+    window.open(whatsappUrl, '_blank', 'noopener');
+  };
   
   const currentYear = new Date().getFullYear();
 
@@ -16,7 +48,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
   ];
 
   const communityLinks = [
-    { label: "Compartilhar", icon: Share2 },
+    { label: "Compartilhar", icon: Share2, action: handleShare },
     { label: "Fale Conosco", icon: MessageSquare, action: handleOpenSupport },
   ];
 
@@ -104,6 +136,13 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
             <Instagram className="w-6 h-6 text-white" />
           </a>
         </div>
+
+        {/* Share feedback */}
+        {shareStatus && (
+          <div className="text-center mb-4">
+            <p className="text-sm text-muted-foreground">{shareStatus}</p>
+          </div>
+        )}
 
         {/* Copyright */}
         <div className="text-center pt-8 border-t border-border">
