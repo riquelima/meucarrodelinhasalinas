@@ -1,17 +1,42 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Message, MessageDocument } from './schemas/message.schema';
-import { UsersService } from '../users/users.service'; // ajuste path se necessário
+import { UsersService } from '../users/users.service';
 import { User, UserDocument } from '../users/schemas/user.schema';
 
 @Injectable()
-export class MessageService {
+export class MessageService implements OnModuleDestroy, OnModuleInit {
     constructor(
         @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         private usersService: UsersService,
     ) { }
+
+    private readonly logger = new Logger(MessageService.name);
+    private cleanupInterval?: NodeJS.Timeout;
+
+    // Apaga mensagens antigas ao iniciar o módulo e agenda limpeza diária
+    async onModuleInit() {
+        try {
+            await this.purgeOldMessages();
+        } catch (err) {
+            this.logger.warn('Initial failed: ' + err?.message || err);
+        }
+
+        const oneDayMs = 24 * 60 * 60 * 1000;
+        this.cleanupInterval = setInterval(() => {
+            this.purgeOldMessages().catch(err => {
+                this.logger.error('Scheduled failed', err);
+            });
+        }, oneDayMs);
+    }
+
+    onModuleDestroy() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+        }
+    }
 
     // valida roles (impede motorista↔motorista)
     async validateRolesForChat(fromId: string, toId: string) {
@@ -159,6 +184,23 @@ export class MessageService {
 
     async getAllMessages() {
         return this.messageModel.find().exec();
+    }
+
+    
+    async purgeOldMessages(retentionDays?: number) {
+        const days = retentionDays ?? (process.env.MESSAGE_RETENTION_DAYS ? parseInt(process.env.MESSAGE_RETENTION_DAYS, 10) : 90);
+        if (!days || days <= 0) {
+            this.logger.warn('Invalid MESSAGE_RETENTION_DAYS, skipping purge.');
+            return;
+        }
+
+        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        this.logger.log(`Purging messages older than ${days} days (before ${cutoff.toISOString()})`);
+
+        const result = await this.messageModel.deleteMany({ createdAt: { $lt: cutoff } }).exec();
+        const deleted = (result as any)?.deletedCount ?? 0;
+        this.logger.log(`Purged ${deleted} old message(s).`);
+        return deleted;
     }
 }
 
