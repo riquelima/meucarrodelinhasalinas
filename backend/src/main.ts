@@ -14,6 +14,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173',
       'https://frontend-patient-paper-5906.fly.dev',
+      'https://meucarrodelinhasalinas.com.br',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,

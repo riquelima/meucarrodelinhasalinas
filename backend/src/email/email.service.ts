@@ -26,14 +26,14 @@ export class EmailService {
       from: `Meu Carro de Linha <${process.env.EMAIL_FROM?.toString() || 'no-reply@meucarrodelinhasalinas.com.br'}>`,
       to,
       subject: 'Redefinição de Senha',
-      html: resetPasswordTemplate(userName, token, process.env.CLIENT_URL  || 'http://localhost:5173'),
+      html: resetPasswordTemplate(userName, token, process.env.CLIENT_URL  || 'meucarrodelinhasalinas.com.br'),
     });
   }
 
   async sendSupportEmail(fromEmail: string, message: string) {
     return this.resend.emails.send({
       from: `Meu Carro de Linha <${process.env.EMAIL_FROM?.toString() || 'no-reply@meucarrodelinhasalinas.com.br'}>`,
-      to: '',
+      to: `${process.env.EMAIL_SUPORTE?.toString() || 'suporte.meucarrodelinha@gmail.com'}`,
       replyTo: fromEmail,
       subject: `📩 Novo contato via site`,
       html: supportContactTemplate(fromEmail, message),
