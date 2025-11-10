@@ -68,14 +68,24 @@ export class UsersService {
     ) {
         const model = await this.getModelByRoleFromUser(idUser);
 
-        // Busca o documento completo
         const user = await model.findById(idUser);
         if (!user) throw new NotFoundException('Usuário não encontrado');
 
-        //Upload de avatar
         if (file) {
-            const url = await this.cloudinaryService.uploadImage(file, 'users_avatar');
-            updateData.avatar = url.secure_url;
+            // upload new avatar first
+            const uploadResult = await this.cloudinaryService.uploadImage(file, 'users_avatar');
+            const newUrl = uploadResult.secure_url;
+
+            // if there was an existing avatar, delete it now that new upload succeeded
+            if (user.avatar) {
+                try {
+                    await this.cloudinaryService.deleteImageByUrl(user.avatar);
+                } catch (err) {
+                    // ignore deletion errors
+                }
+            }
+
+            updateData.avatar = newUrl;
         }
 
         // Hash da senha

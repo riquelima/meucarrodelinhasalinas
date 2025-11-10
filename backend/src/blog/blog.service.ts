@@ -137,7 +137,7 @@ export class BlogService {
     };
   }
 
-  async update(id: string, updateBlogDto: UpdateBlogDto, file?: Express.Multer.File, file2?: Express.Multer.File, file3?: Express.Multer.File, removeImage?: boolean, removeImage2?: boolean, removeImage3?: boolean) {
+  async update(id: string, updateBlogDto: UpdateBlogDto, file?: Express.Multer.File, file2?: Express.Multer.File, file3?: Express.Multer.File) {
     const blog = await this.blogModel.findById(id);
     if (!blog) throw new NotFoundException('Blog não encontrado');
 
@@ -146,22 +146,52 @@ export class BlogService {
     let imageUrl3: string | null = blog.image3 || null;
 
     if (file) {
+      // upload new primary image first
       const uploadResult = await this.cloudinaryService.uploadImage(file, 'blog-images');
-      imageUrl = uploadResult.secure_url;
+      const newImageUrl = uploadResult.secure_url;
+
+
+      if (blog.image) {
+        try { await this.cloudinaryService.deleteImageByUrl(blog.image); } catch (err) { console.log(err); }
+      }
+
+      imageUrl = newImageUrl;
     }
 
-    if (removeImage2) {
+    if (file2) {
+
+      const uploadResult2 = await this.cloudinaryService.uploadImage(file2, 'blog-images');
+      const newImageUrl2 = uploadResult2.secure_url;
+
+      if (blog.image2) {
+        try { await this.cloudinaryService.deleteImageByUrl(blog.image2); } catch (err) { }
+      }
+
+      imageUrl2 = newImageUrl2;
+    } else {
+      // no file2 provided -> remove existing image2 if present
+      if (blog.image2) {
+        try { await this.cloudinaryService.deleteImageByUrl(blog.image2); } catch (err) { }
+      }
       imageUrl2 = null;
-    } else if (file2) {
-      const uploadResult = await this.cloudinaryService.uploadImage(file2, 'blog-images');
-      imageUrl2 = uploadResult.secure_url;
     }
 
-    if (removeImage3) {
+    // For image3: same rule as image2
+    if (file3) {
+      // upload new tertiary image first
+      const uploadResult3 = await this.cloudinaryService.uploadImage(file3, 'blog-images');
+      const newImageUrl3 = uploadResult3.secure_url;
+
+      if (blog.image3) {
+        try { await this.cloudinaryService.deleteImageByUrl(blog.image3); } catch (err) { }
+      }
+
+      imageUrl3 = newImageUrl3;
+    } else {
+      if (blog.image3) {
+        try { await this.cloudinaryService.deleteImageByUrl(blog.image3); } catch (err) { }
+      }
       imageUrl3 = null;
-    } else if (file3) {
-      const uploadResult = await this.cloudinaryService.uploadImage(file3, 'blog-images');
-      imageUrl3 = uploadResult.secure_url;
     }
 
     if (updateBlogDto.title) blog.title = updateBlogDto.title;
@@ -209,10 +239,15 @@ export class BlogService {
 
   async deleteById(id: string) {
     const deleted = await this.blogModel.findByIdAndDelete(id).exec();
-    
+
     if (!deleted) {
       throw new NotFoundException('Blog não encontrado');
     }
+
+    // delete associated images from Cloudinary
+    try { if (deleted.image) await this.cloudinaryService.deleteImageByUrl(deleted.image); } catch (err) {}
+    try { if ((deleted as any).image2) await this.cloudinaryService.deleteImageByUrl((deleted as any).image2); } catch (err) {}
+    try { if ((deleted as any).image3) await this.cloudinaryService.deleteImageByUrl((deleted as any).image3); } catch (err) {}
 
     return { message: 'Blog deletado com sucesso' };
   }

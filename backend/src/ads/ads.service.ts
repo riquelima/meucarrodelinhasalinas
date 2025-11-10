@@ -99,8 +99,14 @@ export class AdsService {
         if (!ad) throw new NotFoundException('Anúncio não encontrado');
 
         if (file) {
-            const image = await this.cloudinaryService.uploadImage(file, 'ads');
-            updateDto.image = image.secure_url;
+          const uploadResult = await this.cloudinaryService.uploadImage(file, 'ads');
+          const newImageUrl = uploadResult.secure_url;
+
+          if (ad.image) {
+            try { await this.cloudinaryService.deleteImageByUrl(ad.image); } catch (err) { console.log(err); }
+          }
+
+          updateDto.image = newImageUrl;
         }
 
         const allowedFields = [
@@ -138,10 +144,13 @@ export class AdsService {
 
     async deleteById(id: string) {
     const deleted = await this.adsModel.findByIdAndDelete(id).exec();
-    
+
     if (!deleted) {
       throw new NotFoundException('Anuncio não encontrado');
     }
+
+    // delete image from Cloudinary if present
+    try { if (deleted.image) await this.cloudinaryService.deleteImageByUrl(deleted.image); } catch (err) {}
 
     return { message: 'Anuncio deletado com sucesso' };
   }
