@@ -13,8 +13,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:5173',
-      'https://frontend-patient-paper-5906.fly.dev',
       'https://meucarrodelinhasalinas.com.br',
+      process.env.CLIENT_URL || 'http://localhost:5173',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
