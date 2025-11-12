@@ -7,6 +7,7 @@ import {
   IsString,
   MinLength,
   ValidateIf,
+  IsBoolean,
 } from 'class-validator';
 
 export enum UserRole {

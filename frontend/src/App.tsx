@@ -5,6 +5,7 @@ import { SignupScreen } from './components/SignupScreen';
 import { ForgotPasswordScreen } from './components/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './resetPassword';
 import { WelcomeDialog } from './components/WelcomeDialog';
+import { ProfileUpdateReminderDialog } from './components/ProfileUpdateReminderDialog';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
@@ -23,6 +24,7 @@ import { AdvertiserTermsScreen } from './components/AdvertiserTermsScreen';
 import SignupSuccessPage  from './sucess';
 import Loading from './loading';
 import { Toaster } from './components/ui/sonner';
+import { API_BASE_URL } from './config/api';
 
 type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
 type Screen =
@@ -55,6 +57,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showProfileReminder, setShowProfileReminder] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
     return savedTheme || 'dark';
@@ -87,57 +90,164 @@ export default function App() {
 
   // Carregar usuário do token JWT
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setIsLoadingUser(false);
-      return;
-    }
-
-    try {
-      const decoded: JwtPayload & { exp?: number } = jwtDecode(token);
-
-      if (decoded.exp && Date.now() >= decoded.exp * 1000) {
-        console.warn('Token expirado');
-        localStorage.removeItem('token');
+    const loadUser = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
         setIsLoadingUser(false);
-        setUserType(null);
-        setUser(null);
-        setCurrentScreen('login');
+        setShowWelcome(false);
+        setShowProfileReminder(false);
         return;
       }
 
-      let type: UserType = null;
-      if (decoded.role === 'motorista') type = 'driver';
-      else if (decoded.role === 'passageiro') type = 'passenger';
-      else if (decoded.role === 'anunciante') type = 'advertiser';
-      else if (decoded.role === 'admin') type = 'admin';
+      try {
+        const decoded: JwtPayload & { exp?: number } = jwtDecode(token);
 
-      setUserType(type);
-      setUser(decoded);
-      setCurrentScreen('dashboard');
-    } catch (err) {
-      console.error('Token inválido:', err);
-      localStorage.removeItem('token');
-      setUserType(null);
-      setUser(null);
-      setCurrentScreen('login');
-    } finally {
-      setIsLoadingUser(false);
-    }
+        if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+          console.warn('Token expirado');
+          localStorage.removeItem('token');
+          setIsLoadingUser(false);
+          setUserType(null);
+          setUser(null);
+          setCurrentScreen('login');
+          return;
+        }
+
+        let type: UserType = null;
+        if (decoded.role === 'motorista') type = 'driver';
+        else if (decoded.role === 'passageiro') type = 'passenger';
+        else if (decoded.role === 'anunciante') type = 'advertiser';
+        else if (decoded.role === 'admin') type = 'admin';
+
+        setUserType(type);
+        setUser(decoded);
+        setCurrentScreen('dashboard');
+
+        const userId = (decoded as any)?.sub;
+        
+        if (userId) {
+          try {
+            const welcomeKey = `welcome_shown_${userId}`;
+            const profileReminderKey = `profile_reminder_shown_${userId}`;
+            const hasSeenWelcome = !!localStorage.getItem(welcomeKey);
+            const hasSeenProfileReminder = !!localStorage.getItem(profileReminderKey);
+            
+            try {
+              const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              });
+              if (response.ok) {
+                const userData = await response.json();
+                const cutoffDate = new Date('2025-11-01T00:00:00.000Z');
+                let userCreatedAt: Date;
+                try {
+                  if (userData.createdAt) {
+                    if (typeof userData.createdAt === 'string') {
+                      userCreatedAt = new Date(userData.createdAt);
+                    } else if (userData.createdAt.$date) {
+                      userCreatedAt = new Date(userData.createdAt.$date);
+                    } else if (userData.createdAt instanceof Date) {
+                      userCreatedAt = userData.createdAt;
+                    } else {
+                      userCreatedAt = new Date(userData.createdAt);
+                    }
+                  } else {
+                    userCreatedAt = new Date();
+                  }
+                } catch {
+                  userCreatedAt = new Date();
+                }
+                const isLegacyUser = userCreatedAt.getTime() < cutoffDate.getTime();
+                
+                if (isLegacyUser && !hasSeenProfileReminder) {
+                  setShowProfileReminder(true);
+                  setShowWelcome(false);
+                } else {
+                  setShowProfileReminder(false);
+                  setShowWelcome(!hasSeenWelcome);
+                }
+              } else {
+                setShowProfileReminder(false);
+                setShowWelcome(!hasSeenWelcome);
+              }
+            } catch {
+              setShowProfileReminder(false);
+              setShowWelcome(!hasSeenWelcome);
+            }
+          } catch {
+            setShowWelcome(false);
+            setShowProfileReminder(false);
+          }
+        } else {
+          setShowWelcome(false);
+          setShowProfileReminder(false);
+        }
+      } catch (err) {
+        console.error('Token inválido:', err);
+        localStorage.removeItem('token');
+        setUserType(null);
+        setUser(null);
+        setCurrentScreen('login');
+        setShowWelcome(false);
+        setShowProfileReminder(false);
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    loadUser();
   }, []);
 
   // Login
-  const handleLogin = (type: 'passenger' | 'driver' | 'advertiser' | 'admin', token?: string) => {
+  const handleLogin = (
+    type: 'passenger' | 'driver' | 'advertiser' | 'admin',
+    token?: string,
+    isLegacyUserFromAuth: boolean = false
+  ) => {
     if (token) localStorage.setItem('token', token);
     setUserType(type);
+
+    let decoded: (JwtPayload & { sub?: string }) | null = null;
     if (token) {
       try {
-        const decoded: JwtPayload = jwtDecode(token);
+        decoded = jwtDecode(token);
         setUser(decoded);
       } catch {
         setUser(null);
       }
     }
+
+    const userId = decoded?.sub;
+    if (userId) {
+      try {
+        const welcomeKey = `welcome_shown_${userId}`;
+        const profileReminderKey = `profile_reminder_shown_${userId}`;
+        const hasSeenWelcome = !!localStorage.getItem(welcomeKey);
+        const hasSeenProfileReminder = !!localStorage.getItem(profileReminderKey);
+        
+        if (isLegacyUserFromAuth && !hasSeenProfileReminder) {
+          setShowProfileReminder(true);
+          setShowWelcome(false);
+        } else {
+          setShowProfileReminder(false);
+          setShowWelcome(!hasSeenWelcome);
+        }
+      } catch {
+        if (isLegacyUserFromAuth) {
+          setShowProfileReminder(true);
+          setShowWelcome(false);
+        } else {
+          setShowWelcome(true);
+          setShowProfileReminder(false);
+        }
+      }
+    } else {
+      setShowWelcome(false);
+      setShowProfileReminder(false);
+    }
+
     setCurrentScreen('dashboard');
   };
 
@@ -146,6 +256,7 @@ export default function App() {
     setUserType(type);
     setCurrentScreen('dashboard');
     setShowWelcome(true);
+    setShowProfileReminder(false);
   };
 
   // Logout
@@ -154,9 +265,59 @@ export default function App() {
     setUserType(null);
     setUser(null);
     setCurrentScreen('login');
+    setShowWelcome(false);
+    setShowProfileReminder(false);
   };
 
   const handleNavigate = (screen: string) => setCurrentScreen(screen as Screen);
+
+  const getCurrentUserId = () => {
+    if ((user as any)?.sub) {
+      return (user as any).sub as string;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const decoded = jwtDecode<JwtPayload & { sub?: string }>(token);
+      return decoded?.sub ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const markWelcomeAsSeen = () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    try {
+      localStorage.setItem(`welcome_shown_${userId}`, 'true');
+    } catch {
+    }
+  };
+
+  const markProfileReminderAsSeen = () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    try {
+      localStorage.setItem(`profile_reminder_shown_${userId}`, 'true');
+    } catch {
+    }
+  };
+
+  const handleCloseWelcome = () => {
+    markWelcomeAsSeen();
+    setShowWelcome(false);
+  };
+
+  const handleDismissProfileReminder = () => {
+    markProfileReminderAsSeen();
+    setShowProfileReminder(false);
+  };
+
+  const handleNavigateToProfileFromReminder = () => {
+    markProfileReminderAsSeen();
+    setShowProfileReminder(false);
+    setCurrentScreen('profile');
+  };
 
   // Inicia chat por outra tela
   const handleStartChat = (id: string, name: string, avatar?: string) => {
@@ -193,11 +354,18 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background">
       {userType && (
-        <WelcomeDialog
-          isOpen={showWelcome}
-          onClose={() => setShowWelcome(false)}
-          userType={userType}
-        />
+        <>
+          <WelcomeDialog
+            isOpen={showWelcome}
+            onClose={handleCloseWelcome}
+            userType={userType}
+          />
+          <ProfileUpdateReminderDialog
+            isOpen={showProfileReminder}
+            onClose={handleDismissProfileReminder}
+            onNavigateToProfile={handleNavigateToProfileFromReminder}
+          />
+        </>
       )}
       <Header
         onMenuClick={() => setIsMenuOpen(!isMenuOpen)}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -11,7 +11,7 @@ import { API_BASE_URL } from "../config/api";
 
 interface LoginScreenProps {
   onNavigate: (screen: string) => void;
-  onLogin: (userType: 'passenger' | 'driver' | 'advertiser' | 'admin', token: string) => void;
+  onLogin: (userType: 'passenger' | 'driver' | 'advertiser' | 'admin', token: string, isLegacyUser: boolean) => void;
 }
 
 export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
@@ -20,7 +20,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setFormError(null);
@@ -43,6 +43,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
       }
 
       const token = data.access_token;
+      const isLegacyUser = !!data.isLegacyUser;
       if (!token) throw new Error("Token não recebido");
 
       const parseJwt = (token: string) => {
@@ -71,7 +72,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
           role === "anunciante" ? "advertiser" :
           "admin";
       }
-      onLogin(mappedRole, token);
+      onLogin(mappedRole, token, isLegacyUser);
     } catch (err: any) {
       setFormError(err.message);
     } finally {

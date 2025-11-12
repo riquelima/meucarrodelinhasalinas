@@ -25,8 +25,39 @@ export class AuthService {
 
 
     async login(user: any) {
+        const cutoffDate = new Date('2025-11-01T00:00:00.000Z');
+        let userCreatedAt: Date;
+        
+        try {
+            const createdAtValue: any = (user as any).createdAt;
+            if (createdAtValue) {
+                if (createdAtValue instanceof Date) {
+                    userCreatedAt = createdAtValue;
+                } else if (typeof createdAtValue === 'string') {
+                    userCreatedAt = new Date(createdAtValue);
+                } else if (createdAtValue.$date) {
+                    userCreatedAt = new Date(createdAtValue.$date);
+                } else if (typeof createdAtValue === 'object' && createdAtValue.toString) {
+                    userCreatedAt = new Date(createdAtValue.toString());
+                } else if (typeof createdAtValue === 'number') {
+                    userCreatedAt = new Date(createdAtValue);
+                } else {
+                    userCreatedAt = new Date(createdAtValue);
+                }
+                
+                if (isNaN(userCreatedAt.getTime())) {
+                    userCreatedAt = new Date();
+                }
+            } else {
+                userCreatedAt = new Date();
+            }
+        } catch (error) {
+            userCreatedAt = new Date();
+        }
+        
+        const isLegacyUser = userCreatedAt.getTime() < cutoffDate.getTime();
         const payload = { sub: user._id, email: user.email, role: user.role };
-        return { access_token: this.jwtService.sign(payload) };
+        return { access_token: this.jwtService.sign(payload), isLegacyUser };
     }
 
 
