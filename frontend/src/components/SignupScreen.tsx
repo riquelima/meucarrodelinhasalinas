@@ -34,7 +34,7 @@ export function SignupScreen({ onNavigate }: SignupScreenProps) {
 
     let payload: any = {
       name: formData.get('name'),
-      email: formData.get('email'),
+      email: formData.get('email')?.toString().toLowerCase(),
       password: formData.get('password'),
       role: roleMap[selectedUserType],
       number

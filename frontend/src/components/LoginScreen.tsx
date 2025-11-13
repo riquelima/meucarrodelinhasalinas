@@ -112,7 +112,7 @@ export function LoginScreen({ onNavigate, onLogin }: LoginScreenProps) {
                 placeholder="seu@email.com"
                 className="bg-input-background h-11"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.toLowerCase())}
                 required
               />
             </div>
