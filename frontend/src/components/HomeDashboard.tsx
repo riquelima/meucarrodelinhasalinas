@@ -10,6 +10,8 @@ import { AdCarousel } from "./AdCarousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import { API_BASE_URL } from "../config/api";
 
 interface HomeDashboardProps {
@@ -233,31 +235,33 @@ export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboa
                           }
                         }}
                       >
-                        Solicitar Vaga
+                        Conversar
                       </Button>
                       <Button
                         variant="outline"
                         size="icon"
                         onClick={() => {
-                        const phoneNumber = driver.number;
+                          const phoneNumber = driver.number;
 
-                        if (!phoneNumber) {
-                          alert("Este motorista não possui WhatsApp cadastrado.");
-                          return;
-                        }
+                          if (!phoneNumber) {
+                            alert("Este motorista não possui WhatsApp cadastrado.");
+                            return;
+                          }
 
-                        const cleanNumber = phoneNumber.replace(/\D/g, "");
+                          const cleanNumber = phoneNumber.replace(/\D/g, "");
 
-                        window.open(
-                          `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
-                            `Olá ${driver.name}, quero uma carona!`
-                          )}`,
-                          "_blank"
-                        );
-                      }}
+                          window.open(
+                            `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
+                              `Olá ${driver.name}, Vim através do "Meu Carro de Linha", e gostaria de agendar uma viagem! \n ${window.location.href}`
+                            )}`,
+                            "_blank"
+                          );
+                        }}
                         className="h-9 w-9"
+                        title="WhatsApp"
+                        aria-label="WhatsApp"
                       >
-                        <Phone className="w-4 h-4" />
+                        <FontAwesomeIcon icon={faWhatsapp} className="text-green-500" />
                       </Button>
                     </div>
                   )}
