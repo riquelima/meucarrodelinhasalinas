@@ -51,7 +51,6 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
           <Logo className="w-10 h-10" />
           <div>
             <h1 className="text-foreground">Meu Carro de Linha</h1>
-            <p className="text-muted-foreground text-xs hidden sm:block">Salinas</p>
           </div>
         </div>
         

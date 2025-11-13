@@ -64,7 +64,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
             <h3 className="text-foreground font-medium text-lg">Meu Carro de Linha</h3>
           </div>
           <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed">
-            Conectando passageiros e motoristas em Salinas.
+            Conectando passageiros e motoristas.
           </p>
         </div>
 
