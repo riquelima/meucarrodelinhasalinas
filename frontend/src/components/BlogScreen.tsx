@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Calendar, User, Search, TrendingUp, InstagramIcon } from "lucide-react";
+import { Calendar, User, Search, TrendingUp, Share2 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AdCarousel } from "./AdCarousel";
 import { Footer } from "./Footer";
@@ -111,10 +111,9 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
           <p className="text-muted-foreground text-sm">Notícias, dicas e atualizações da plataforma</p>
         </div>
 
-        {/* Ad Carousel */}
         <AdCarousel />
 
-        {/* Search and Filter */}
+        {/* Search */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -135,8 +134,9 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
               onClick={() => setSelectedCategory(category)}
               variant={selectedCategory === category ? "default" : "outline"}
               size="sm"
-              className={`flex-shrink-0 h-8 text-xs ${selectedCategory === category ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
-                }`}
+              className={`flex-shrink-0 h-8 text-xs ${
+                selectedCategory === category ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
+              }`}
             >
               {category}
             </Button>
@@ -153,7 +153,9 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
                   alt={filteredPosts[0].title}
                   className="w-full h-full object-cover"
                 />
-                <Badge className="absolute top-3 left-3 bg-blue-600 capitalize">{filteredPosts[0].category}</Badge>
+                <Badge className="absolute top-3 left-3 bg-blue-600 capitalize">
+                  {filteredPosts[0].category}
+                </Badge>
               </div>
               <div className="p-4 lg:p-6">
                 <div className="flex flex-wrap items-center gap-2 lg:gap-3 text-xs text-muted-foreground mb-3">
@@ -170,8 +172,12 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
                     <span>{filteredPosts[0].views} visualizações</span>
                   </div>
                 </div>
-                <h2 className="text-foreground mb-2 text-lg lg:text-xl">{filteredPosts[0].title}</h2>
-                <p className="text-muted-foreground text-sm mb-4 line-clamp-4">{filteredPosts[0].content}</p>
+                <h2 className="text-foreground mb-2 text-lg lg:text-xl">
+                  {filteredPosts[0].title}
+                </h2>
+                <p className="text-muted-foreground text-sm mb-4 line-clamp-4">
+                  {filteredPosts[0].content}
+                </p>
                 <Button
                   onClick={() => handleAddView(filteredPosts[0])}
                   className="bg-blue-600 hover:bg-blue-700 h-9"
@@ -193,11 +199,17 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
                   alt={post.title}
                   className="w-full h-full object-cover"
                 />
-                <Badge className="absolute top-2 left-2 bg-blue-600 text-xs capitalize">{post.category}</Badge>
+                <Badge className="absolute top-2 left-2 bg-blue-600 text-xs capitalize">
+                  {post.category}
+                </Badge>
               </div>
               <CardHeader className="p-3 sm:p-4">
-                <CardTitle className="text-foreground text-sm sm:text-base line-clamp-2">{post.title}</CardTitle>
-                <CardDescription className="text-xs line-clamp-2 mt-1">{post.content}</CardDescription>
+                <CardTitle className="text-foreground text-sm sm:text-base line-clamp-2">
+                  {post.title}
+                </CardTitle>
+                <CardDescription className="text-xs line-clamp-2 mt-1">
+                  {post.content}
+                </CardDescription>
               </CardHeader>
               <CardContent className="p-3 sm:p-4 pt-0">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
@@ -227,36 +239,34 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
           ))}
         </div>
 
-        {/* Modal for full post */}
+        {/* Modal de leitura do post */}
         <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card">
             {selectedPost && (
               <>
                 <DialogHeader>
-                  {/* Carrossel de imagens da notícia */}
-                  <div className="w-full">
-                    <Carousel className="w-full" opts={{ loop: true, autoScroll: 3000 }}>
-                      <CarouselContent>
-                        {[selectedPost.image, selectedPost.image2, selectedPost.image3]
-                          .filter(Boolean)
-                          .map((img, index) => (
-                            <CarouselItem key={index}>
-                              <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden">
-                                <ImageWithFallback
-                                  src={img}
-                                  alt={`${selectedPost.title} - ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            </CarouselItem>
-                          ))}
-                      </CarouselContent>
-                      <div className="hidden sm:block">
-                        <CarouselPrevious className="-left-4" />
-                        <CarouselNext className="-right-4" />
-                      </div>
-                    </Carousel>
-                  </div>
+                  {/* Carrossel */}
+                  <Carousel className="w-full" opts={{ loop: true, autoScroll: 3000 }}>
+                    <CarouselContent>
+                      {[selectedPost.image, selectedPost.image2, selectedPost.image3]
+                        .filter(Boolean)
+                        .map((img, index) => (
+                          <CarouselItem key={index}>
+                            <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden">
+                              <ImageWithFallback
+                                src={img}
+                                alt={`${selectedPost.title} - ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    <div className="hidden sm:block">
+                      <CarouselPrevious className="-left-4" />
+                      <CarouselNext className="-right-4" />
+                    </div>
+                  </Carousel>
 
                   <DialogTitle className="text-foreground text-xl sm:text-2xl mt-4">
                     {selectedPost.title}
@@ -284,28 +294,44 @@ export function BlogScreen({ onNavigate }: BlogScreenProps) {
                   {selectedPost.content}
                 </div>
 
+                {/* Botão de Compartilhar */}
                 <div className="mt-6 flex justify-center">
-                  {selectedPost.link && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(selectedPost.link, "_blank", "noopener,noreferrer");
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <InstagramIcon className="w-6 h-6 text-white" />
-                        <span>Comente sobre essa publicação</span>
-                      </div>
-                    </button>
-                  )}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+
+                      const shareUrl = `${window.location.origin}/blog/${selectedPost._id}`;
+                      const shareData = {
+                        title: selectedPost.title,
+                        text: selectedPost.content.slice(0, 120) + "...",
+                        url: shareUrl,
+                      };
+
+                      if (navigator.share) {
+                        try {
+                          await navigator.share(shareData);
+                        } catch (error) {
+                          console.log("Compartilhamento cancelado:", error);
+                        }
+                      } else {
+                        navigator.clipboard.writeText(shareUrl);
+                        alert("Link da notícia copiado!");
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Share2 className="w-5 h-5 text-white" />
+                      <span>Compartilhar notícia</span>
+                    </div>
+                  </button>
                 </div>
               </>
             )}
           </DialogContent>
         </Dialog>
 
-        <Footer onNavigate={onNavigate}/>
+        <Footer onNavigate={onNavigate} />
         <ScrollToTop />
       </div>
     </div>

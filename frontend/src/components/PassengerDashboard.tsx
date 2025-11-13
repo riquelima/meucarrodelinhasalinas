@@ -5,13 +5,15 @@ import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "./ui/dialog";
-import { Star, MapPin, Clock, Phone, Car as CarIcon, Filter, Search } from "lucide-react";
+import { Star, MapPin, Clock, Phone, Car as CarIcon, Filter, Search, Share2 } from "lucide-react";
 import { AdCarousel } from "./AdCarousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../config/api";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 
 interface PassengerDashboardProps {
   onNavigate: (screen: string) => void;
@@ -253,7 +255,36 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
                         }
                       }}
                     >
-                      Solicitar Vaga
+                      Conversar com motorista
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={async () => {
+                        const shareData = {
+                          title: "Motorista disponível",
+                          text: `Motorista ${driver.name} – Rota: ${driver.origin} → ${driver.destination}`,
+                          url: window.location.href,
+                        };
+
+                        if (navigator.share) {
+                          try {
+                            await navigator.share(shareData);
+                          } catch (error) {
+                            console.log("Compartilhamento cancelado ou falhou:", error);
+                          }
+                        } else {
+                          navigator.clipboard.writeText(
+                            `${shareData.text}\n${shareData.url}`
+                          );
+                          alert("Link copiado para a área de transferência!");
+                        }
+                      }}
+                      className="h-9 w-9"
+                      title="Compartilhar"
+                      aria-label="Compartilhar"
+                    >
+                      <Share2 className="w-4 h-4 text-blue-600" />
                     </Button>
                     <Button
                       variant="outline"
@@ -270,14 +301,16 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
 
                         window.open(
                           `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
-                            `Olá ${driver.name}, quero uma carona!`
+                            `Olá ${driver.name}, Vim através do "Meu Carro de Linha", e gostaria de agendar uma viagem! \n ${window.location.href}`
                           )}`,
                           "_blank"
                         );
                       }}
                       className="h-9 w-9"
+                      title="WhatsApp"
+                      aria-label="WhatsApp"
                     >
-                      <Phone className="w-4 h-4" />
+                      <FontAwesomeIcon icon={faWhatsapp} className="text-green-500" />
                     </Button>
                   </div>
                 </CardContent>

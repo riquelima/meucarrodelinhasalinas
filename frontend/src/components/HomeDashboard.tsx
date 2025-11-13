@@ -5,7 +5,7 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Star, MapPin, Clock, Phone, Search, Car as CarIcon, MessageCircle, HandshakeIcon, ThumbsUp, Radio } from "lucide-react";
+import { Star, MapPin, Clock, Search, Car as CarIcon, MessageCircle, HandshakeIcon, ThumbsUp, Radio, Share2 } from "lucide-react";
 import { AdCarousel } from "./AdCarousel";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Footer } from "./Footer";
@@ -235,7 +235,36 @@ export function HomeDashboard({ onNavigate, userType, onStartChat }: HomeDashboa
                           }
                         }}
                       >
-                        Conversar
+                        Conversar com motorista
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={async () => {
+                          const shareData = {
+                            title: "Motorista disponível",
+                            text: `Motorista ${driver.name} – Rota: ${driver.origin} → ${driver.destination}`,
+                            url: window.location.href,
+                          };
+
+                          if (navigator.share) {
+                            try {
+                              await navigator.share(shareData);
+                            } catch (error) {
+                              console.log("Compartilhamento cancelado ou falhou:", error);
+                            }
+                          } else {
+                            navigator.clipboard.writeText(
+                              `${shareData.text}\n${shareData.url}`
+                            );
+                            alert("Link copiado para a área de transferência!");
+                          }
+                        }}
+                        className="h-9 w-9"
+                        title="Compartilhar"
+                        aria-label="Compartilhar"
+                      >
+                        <Share2 className="w-4 h-4 text-blue-600" />
                       </Button>
                       <Button
                         variant="outline"
