@@ -69,7 +69,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
         </div>
 
         {/* Footer links */}
-        <div className="grid grid-cols-2 gap-8 mb-6 max-w-md mx-auto">
+        <div className="grid grid-cols-2 gap-6 mb-8 max-w-md mx-auto">
           {/* Legal */}
           <div>
             <h4 className="text-foreground mb-2 font-semibold text-center text-sm uppercase tracking-wide">Legal</h4>
@@ -116,7 +116,7 @@ export function Footer({ onNavigate }: { onNavigate?: (path: string) => void }) 
         {/* Social */}
         <div className="flex justify-center mb-8">
           <a
-            href="https://instagram.com/meucarrodelinha"
+            href="https://instagram.com/meucarrodelinhasalinas"
             target="_blank"
             rel="noopener noreferrer"
             className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 hover:opacity-90 rounded-full flex items-center justify-center transition-opacity"

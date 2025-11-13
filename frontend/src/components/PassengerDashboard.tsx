@@ -182,7 +182,7 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
                 className="shadow-sm hover:shadow-md transition-shadow bg-card border-border"
               >
                 <CardHeader className="px-4">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
                     <Avatar className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
                       {driver.avatar ? (
                         <ImageWithFallback
