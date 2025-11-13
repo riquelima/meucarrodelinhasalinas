@@ -255,7 +255,7 @@ export function PassengerDashboard({ onNavigate, onStartChat }: PassengerDashboa
                         }
                       }}
                     >
-                      Solicitar Vaga
+                      Conversar com motorista
                     </Button>
                     <Button
                       variant="outline"
