@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { BlogService } from './blog.service';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { Public } from 'src/common/decorators/roles.decorator';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
@@ -56,24 +57,28 @@ export class BlogController {
 
     @Get()
     @ApiOperation({ summary: 'Lista todos os blogs' })
+    @Public()
     async findAll() {
         return this.blogService.findAll();
     }
 
     @Get('/home')
     @ApiOperation({ summary: 'Retorna os blogs para página inicial' })
+    @Public()
     async findHomeBlogs() {
         return this.blogService.findHomeBlogs();
     }
 
     @Get(':id')
     @ApiOperation({ summary: 'Retorna um blog pelo ID' })
+    @Public()
     async findOne(@Param('id') id: string) {
         return this.blogService.findOne(id);
     }
 
     @Get('count/all')
     @ApiOperation({ summary: 'Retorna a contagem total de blogs, pra tela de admin' })
+    @Public()
     async countAll() {
         return await this.blogService.countAll();
     }

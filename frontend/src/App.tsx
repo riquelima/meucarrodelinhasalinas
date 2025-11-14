@@ -9,6 +9,7 @@ import { ProfileUpdateReminderDialog } from './components/ProfileUpdateReminderD
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { HomeDashboard } from './components/HomeDashboard';
+import HomeVisitorDashboard from './components/HomeVisitorDashboard';
 import { PassengerDashboard } from './components/PassengerDashboard';
 import { DriverDashboard } from './components/DriverDashboard';
 import { AdvertiserDashboard } from './components/AdvertiserDashboard';
@@ -26,7 +27,7 @@ import Loading from './loading';
 import { Toaster } from './components/ui/sonner';
 import { API_BASE_URL } from './config/api';
 
-type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | null;
+type UserType = 'passenger' | 'driver' | 'advertiser' | 'admin' | 'visitor' | null;
 type Screen =
   | 'login'
   | 'signup'
@@ -52,8 +53,14 @@ interface JwtPayload {
 }
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('login');
-  const [userType, setUserType] = useState<UserType>(null);
+  const [currentScreen, setCurrentScreen] = useState<Screen>(() => {
+    // default to dashboard so visitor home appears immediately without needing to type /dashboard
+    return 'dashboard';
+  });
+  const [userType, setUserType] = useState<UserType>(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return token ? null : 'visitor';
+  });
   const [user, setUser] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -93,6 +100,14 @@ export default function App() {
     const loadUser = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
+        // No token: show visitor home as initial public screen (unless reset-password route)
+        const path = window.location.pathname || '';
+        if (path === '/reset-password' || path.startsWith('/reset-password')) {
+          setCurrentScreen('reset-password');
+        } else {
+          setCurrentScreen('dashboard');
+        }
+        setUserType('visitor');
         setIsLoadingUser(false);
         setShowWelcome(false);
         setShowProfileReminder(false);
@@ -100,23 +115,54 @@ export default function App() {
       }
 
       try {
-        const decoded: JwtPayload & { exp?: number } = jwtDecode(token);
+        const decodedAny = jwtDecode(token) as any;
 
-        if (decoded.exp && Date.now() >= decoded.exp * 1000) {
-          console.warn('Token expirado');
+        // Basic validation: decoded must be an object and contain `sub` and `role`.
+        if (!decodedAny || typeof decodedAny !== 'object' || !decodedAny.sub || !decodedAny.role) {
+          console.warn('Token inválido ou incompleto (falta sub/role)');
           localStorage.removeItem('token');
           setIsLoadingUser(false);
-          setUserType(null);
+          setUserType('visitor');
           setUser(null);
-          setCurrentScreen('login');
+          setCurrentScreen('dashboard');
+          setShowWelcome(false);
+          setShowProfileReminder(false);
           return;
         }
 
-        let type: UserType = null;
+        const decoded: JwtPayload & { exp?: number } = decodedAny;
+
+        if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+          console.warn('Token expirado');
+          // Remove token and show visitor home instead of forcing login
+          localStorage.removeItem('token');
+          setIsLoadingUser(false);
+          setUserType('visitor');
+          setUser(null);
+          setCurrentScreen('dashboard');
+          setShowWelcome(false);
+          setShowProfileReminder(false);
+          return;
+        }
+
+        let type: UserType = 'visitor';
         if (decoded.role === 'motorista') type = 'driver';
         else if (decoded.role === 'passageiro') type = 'passenger';
         else if (decoded.role === 'anunciante') type = 'advertiser';
         else if (decoded.role === 'admin') type = 'admin';
+
+        // If role didn't match any known type, treat as visitor
+        if (type === 'visitor') {
+          console.warn('Token com role desconhecida, tratando como visitante');
+          localStorage.removeItem('token');
+          setIsLoadingUser(false);
+          setUserType('visitor');
+          setUser(null);
+          setCurrentScreen('dashboard');
+          setShowWelcome(false);
+          setShowProfileReminder(false);
+          return;
+        }
 
         setUserType(type);
         setUser(decoded);
@@ -186,10 +232,11 @@ export default function App() {
         }
       } catch (err) {
         console.error('Token inválido:', err);
+        // For invalid tokens, remove it and show visitor home
         localStorage.removeItem('token');
-        setUserType(null);
+        setUserType('visitor');
         setUser(null);
-        setCurrentScreen('login');
+        setCurrentScreen('dashboard');
         setShowWelcome(false);
         setShowProfileReminder(false);
       } finally {
@@ -348,17 +395,17 @@ export default function App() {
   
   if (currentScreen === 'forgot-password') return <ForgotPasswordScreen onNavigate={handleNavigate} />;
 
-  if (!userType) return null;
+  if (userType === null) return null;
 
   // Telas privadas
   return (
     <div className="min-h-screen bg-background">
-      {userType && (
+      {userType && userType !== 'visitor' && (
         <>
           <WelcomeDialog
             isOpen={showWelcome}
             onClose={handleCloseWelcome}
-            userType={userType}
+            userType={userType as any}
           />
           <ProfileUpdateReminderDialog
             isOpen={showProfileReminder}
@@ -367,6 +414,8 @@ export default function App() {
           />
         </>
       )}
+
+      {/* Show header for visitors too, but hide the hamburger button for visitor */}
       <Header
         onMenuClick={() => setIsMenuOpen(!isMenuOpen)}
         isMenuOpen={isMenuOpen}
@@ -374,22 +423,28 @@ export default function App() {
         theme={theme}
         onThemeChange={setTheme}
         onNavigate={handleNavigate}
+        showMenuButton={userType !== 'visitor'}
       />
-      <Sidebar
-        userType={userType}
-        currentScreen={currentScreen}
-        onNavigate={handleNavigate}
-        onLogout={handleLogout}
-        isOpen={isMenuOpen}
-        setIsOpen={setIsMenuOpen}
-        onUnreadChange={(c) => {
-          setUnreadCount(c);
-          try { localStorage.setItem('unreadCount', String(c)); } catch {}
-        }}
-      />
+      {userType !== 'visitor' && (
+        <Sidebar
+          userType={userType as any}
+          currentScreen={currentScreen}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          isOpen={isMenuOpen}
+          setIsOpen={setIsMenuOpen}
+          onUnreadChange={(c) => {
+            setUnreadCount(c);
+            try { localStorage.setItem('unreadCount', String(c)); } catch {}
+          }}
+        />
+      )}
       <div className="w-full">
         {currentScreen === 'dashboard' && userType === 'admin' && <AdminDashboard onNavigate={handleNavigate}/>}
-        {currentScreen === 'dashboard' && userType !== 'admin' && (
+        {currentScreen === 'dashboard' && userType === 'visitor' && (
+          <HomeVisitorDashboard onNavigate={handleNavigate} />
+        )}
+        {currentScreen === 'dashboard' && userType !== 'admin' && userType !== 'visitor' && (
           <HomeDashboard onNavigate={handleNavigate} userType={userType} onStartChat={handleStartChat} />
         )}
         {currentScreen === 'search' && userType === 'passenger' && <PassengerDashboard onNavigate={handleNavigate} onStartChat={handleStartChat} />}
@@ -397,16 +452,16 @@ export default function App() {
           <AdvertiserDashboard onNavigate={handleNavigate} userId={(user as any)?.sub} />
         )}
         {currentScreen === 'blog' && <BlogScreen onNavigate={handleNavigate}/>}
-        {currentScreen === 'chat' && userType !== 'admin' && (
+        {currentScreen === 'chat' && userType !== 'admin' && userType !== 'visitor' && (
           <ChatScreen
-            userType={userType}
+            userType={userType as any}
             startUserId={pendingChat?.id}
             startUserName={pendingChat?.name}
             startUserAvatar={pendingChat?.avatar}
             onStartChatConsumed={() => setPendingChat(null)}
           />
         )}
-        {currentScreen === 'calculator' && <RideCalculatorScreen userType={userType} />}
+        {currentScreen === 'calculator' && userType !== 'visitor' && <RideCalculatorScreen userType={userType as any} />}
         {currentScreen === 'profile' && <ProfileScreen onLogout={handleLogout} theme={theme} onThemeChange={setTheme} onNavigate={handleNavigate}/>}
       </div>
       <Toaster />

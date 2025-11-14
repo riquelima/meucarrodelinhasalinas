@@ -37,13 +37,8 @@ export class UsersController {
     @ApiOperation({ summary: 'Retorna os motoristas com mais visualizações de perfil' })
     async getTopMotoristasByProfileViews() {
         return this.usersService.getTopMotoristasByProfileViews();
-    }  
-    
-    @Delete()
-    @ApiOperation({ summary: 'Deletar todos os usuários, só pra teste tmj' })
-    deletarTodosUsuarios() {
-        return this.usersService.deleteAll();
-    }
+    }     
+
 
     @Patch('/status/:id')
     @ApiOperation({ summary: 'Muda status do motorista' })

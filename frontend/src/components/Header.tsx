@@ -11,9 +11,10 @@ interface HeaderProps {
   theme: 'light' | 'dark';
   onThemeChange: (theme: 'light' | 'dark') => void;
   onNavigate: (screen: string) => void;
+  showMenuButton?: boolean;
 }
 
-export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onThemeChange, onNavigate }: HeaderProps) {
+export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onThemeChange, onNavigate, showMenuButton = true }: HeaderProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -56,14 +57,16 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
         
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Button
-              onClick={onMenuClick}
-              variant="outline"
-              size="icon"
-              className="bg-card shadow-md border-border"
-            >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
+            {showMenuButton && (
+              <Button
+                onClick={onMenuClick}
+                variant="outline"
+                size="icon"
+                className="bg-card shadow-md border-border"
+              >
+                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            )}
             {unreadMessages > 0 && (
               <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-white text-xs">
                 {unreadMessages}
