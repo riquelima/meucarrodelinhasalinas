@@ -35,12 +35,14 @@ export class AdsController {
   }
 
   @Get()
+  @Public()
   async getAllAds() {
     return this.adsService.getAllAds();
   }
 
   @Get('count')
   @ApiOperation({ summary: 'Retorna a contagem total de anúncios' })
+  @Public()
   async getAdsCount() {
     return this.adsService.getAdsCount();
   }
@@ -95,12 +97,14 @@ export class AdsController {
 
   @Get('stats/monthly-growth')
   @ApiOperation({ summary: 'Retorna o crescimento mensal de anúncios ativos' })
+  @Public()
   async getMonthlyGrowth() {
     return this.adsService.getMonthlyGrowth();
   }
 
   @Get('stats/chart-data')
   @ApiOperation({ summary: 'Retorna dados do gráfico dos últimos 4 meses' })
+  @Public()
   async getChartData() {
     return this.adsService.getChartData();
   }
