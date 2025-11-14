@@ -1,4 +1,4 @@
-import { Menu, X, Car, Sun, Moon } from "lucide-react";
+import { Menu, X, Car, Sun, Moon, LogIn } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
@@ -12,9 +12,10 @@ interface HeaderProps {
   onThemeChange: (theme: 'light' | 'dark') => void;
   onNavigate: (screen: string) => void;
   showMenuButton?: boolean;
+  showLoginButton?: boolean;
 }
 
-export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onThemeChange, onNavigate, showMenuButton = true }: HeaderProps) {
+export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onThemeChange, onNavigate, showMenuButton = true, showLoginButton = false }: HeaderProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -65,6 +66,19 @@ export function Header({ onMenuClick, isMenuOpen, unreadMessages, theme, onTheme
                 className="bg-card shadow-md border-border"
               >
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            )}
+
+            {!showMenuButton && showLoginButton && (
+              <Button
+                onClick={() => onNavigate('login')}
+                variant="outline"
+                className="bg-card shadow-md border-border flex items-center gap-2 px-3 py-1.5"
+                aria-label="Entrar"
+                title="Entrar"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>Entrar</span>
               </Button>
             )}
             {unreadMessages > 0 && (

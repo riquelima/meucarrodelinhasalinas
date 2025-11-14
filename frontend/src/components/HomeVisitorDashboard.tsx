@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../config/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
+import { LogIn } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Search, Car as CarIcon, HandshakeIcon, Radio, Star } from "lucide-react";
 import { AdCarousel } from "./AdCarousel";
@@ -68,6 +71,8 @@ const MOCK_BLOGS = [
 export function HomeVisitorDashboard({ onNavigate }: HomeVisitorDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [blogs, setBlogs] = useState<any[]>(MOCK_BLOGS);
+  const [showHowToCallModal, setShowHowToCallModal] = useState(false);
+  const [showTipsModal, setShowTipsModal] = useState(false);
 
   const filteredDrivers = MOCK_DRIVERS.filter(d => {
     if (!searchTerm) return true;
@@ -99,14 +104,14 @@ export function HomeVisitorDashboard({ onNavigate }: HomeVisitorDashboardProps) 
           <h1 className="text-foreground mb-3 text-2xl lg:text-3xl">Seu Carro de Linha, na Palma da Mão</h1>
           <p className="text-muted-foreground text-sm lg:text-base max-w-2xl mx-auto px-4">
             Conheça o app e veja como é simples chamar um motorista na sua região.
-          </p>
+          </p>          
 
           <div className="max-w-2xl mx-auto mt-4">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
+              <Input
                 placeholder="Buscar rota ou motorista..."
-                className="pl-12 h-16 bg-input-background text-base border-border shadow-sm w-full rounded"
+                className="pl-12 h-16 bg-input-background text-base border-border shadow-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -114,8 +119,9 @@ export function HomeVisitorDashboard({ onNavigate }: HomeVisitorDashboardProps) 
           </div>
 
           <div className="blue-500 mt-4">
-            <Button onClick={() => onNavigate('login')} size="lg">
+            <Button onClick={() => onNavigate('login')}>
               Conheça o Meu Carro de Linha
+              <LogIn className="w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -125,23 +131,31 @@ export function HomeVisitorDashboard({ onNavigate }: HomeVisitorDashboardProps) 
           <AdCarousel />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button variant="outline" className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-yellow-500/50 hover:bg-yellow-500/10">
-            <CarIcon className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-            <div className="text-left">
-              <div className="text-foreground text-sm">Como Chamar um Carro</div>
-              <div className="text-muted-foreground text-xs">Veja o passo a passo</div>
-            </div>
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Button
+              onClick={() => setShowHowToCallModal(true)}
+              variant="outline"
+              className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-yellow-500/50 hover:bg-yellow-500/10"
+            >
+              <CarIcon className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+              <div className="text-left">
+                <div className="text-foreground text-sm">Como Chamar um Carro</div>
+                <div className="text-muted-foreground text-xs">Veja o passo a passo</div>
+              </div>
+            </Button>
 
-          <Button variant="outline" className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-green-500/50 hover:bg-green-500/10">
-            <HandshakeIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-            <div className="text-left">
-              <div className="text-foreground text-sm">Dicas de Boa Convivência</div>
-              <div className="text-muted-foreground text-xs">Aprenda as melhores práticas</div>
-            </div>
-          </Button>
-        </div>
+            <Button
+              onClick={() => setShowTipsModal(true)}
+              variant="outline"
+              className="h-auto py-3 px-4 flex items-center justify-start gap-3 border-green-500/50 hover:bg-green-500/10"
+            >
+              <HandshakeIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <div className="text-left">
+                <div className="text-foreground text-sm">Dicas de Boa Convivência</div>
+                <div className="text-muted-foreground text-xs">Aprenda as melhores práticas</div>
+              </div>
+            </Button>
+          </div>
 
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
@@ -233,6 +247,91 @@ export function HomeVisitorDashboard({ onNavigate }: HomeVisitorDashboardProps) 
       </div>
 
       <ScrollToTop />
+      {/* Modal: Como Chamar um Carro */}
+      <Dialog open={showHowToCallModal} onOpenChange={setShowHowToCallModal}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <CarIcon className="w-6 h-6 text-yellow-500" />
+              <DialogTitle className="text-foreground text-xl">Como Chamar um Carro</DialogTitle>
+            </div>
+            <DialogDescription className="sr-only">
+              Instruções passo a passo de como solicitar uma corrida
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3 text-sm">
+              <p className="text-foreground">
+                <span className="text-yellow-500 mr-2">1. Faça Login:</span>
+                Para contatar um motorista, primeiro <button onClick={() => { setShowHowToCallModal(false); onNavigate('login'); }} className="text-blue-500 underline">crie sua conta</button> ou faça o <button onClick={() => { setShowHowToCallModal(false); onNavigate('login'); }} className="text-blue-500 underline">login</button>.
+              </p>
+              <p className="text-foreground">
+                <span className="text-yellow-500 mr-2">2. Escolha seu Motorista:</span>
+                Na lista acima, clique em um motorista que esteja <span className="text-green-500">Online</span> para uma corrida imediata, ou agende com qualquer um mesmo <span className="text-gray-500">Offline</span>.
+              </p>
+              <p className="text-foreground">
+                <span className="text-yellow-500 mr-2">3. Chame no WhatsApp:</span>
+                Use o botão "Agendar uma Viagem" para iniciar uma conversa direta com o motorista.
+              </p>
+              <p className="text-foreground">
+                <span className="text-yellow-500 mr-2">4. Combine a Corrida:</span>
+                Aceite o valor, o local de partida e o destino diretamente com o motorista. O pagamento é feito diretamente ao motorista.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-border">
+              <Button 
+                onClick={() => setShowHowToCallModal(false)} 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                Entendi
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Dicas de Boa Convivência */}
+      <Dialog open={showTipsModal} onOpenChange={setShowTipsModal}>
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <HandshakeIcon className="w-6 h-6 text-green-500" />
+              <DialogTitle className="text-foreground text-xl">Dicas de Boa Convivência</DialogTitle>
+            </div>
+            <DialogDescription className="sr-only">
+              Recomendações para uma experiência agradável entre passageiros e motoristas
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-3 text-sm">
+              <p className="text-foreground">
+                <span className="text-green-500 mr-2">Respeito Mútuo:</span>
+                O motorista é um profissional que presta um serviço público. Trate-o com a mesma cordialidade que você espera receber.
+              </p>
+              <p className="text-foreground">
+                <span className="text-green-500 mr-2">Cuidado com o Veículo:</span>
+                O carro é o instrumento de trabalho do motorista. Evite bater a porta, não deixe lixo dentro dele e cuide do seu se fosse seu.
+              </p>
+              <p className="text-foreground">
+                <span className="text-green-500 mr-2">Seja Pontual:</span>
+                Combine um horário e local e esteja pronto. Isso ajuda o motorista a manter sua agenda e atender outros passageiros.
+              </p>
+              <p className="text-foreground">
+                <span className="text-green-500 mr-2">Avalie o Serviço:</span>
+                Após a corrida, volte ao seu painel e avalie o motorista. O seu feedback é importante para a comunidade e outros passageiros.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-border">
+              <Button 
+                onClick={() => setShowTipsModal(false)} 
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                Entendi
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
