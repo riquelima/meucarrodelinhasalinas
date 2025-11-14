@@ -424,6 +424,7 @@ export default function App() {
         onThemeChange={setTheme}
         onNavigate={handleNavigate}
         showMenuButton={userType !== 'visitor'}
+        showLoginButton={userType === 'visitor'}
       />
       {userType !== 'visitor' && (
         <Sidebar
