@@ -50,6 +50,8 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
 
+    app.setGlobalPrefix('api'); // <--- A Vercel manda o fallback para /api
+
     await app.init();
     cachedApp = app;
   }

@@ -1,2 +1,2 @@
-// Centraliza a URL da API para todos os módulos do frontend
-export const API_BASE_URL = 'https://meu-carro-linha-backend.onrender.com';
+// No deploy root do Vercel, a API responde nativamente em /api 
+export const API_BASE_URL = '/api';
