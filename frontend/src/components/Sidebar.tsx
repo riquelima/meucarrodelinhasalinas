@@ -1,6 +1,5 @@
-import { Home, Search, MessageCircle, User, Car, LogOut, BookOpen, Shield, Calculator } from "lucide-react";
+import { Home, Search, MessageCircle, User, LogOut, BookOpen, Shield, Calculator } from "lucide-react";
 import { Logo } from "./Logo";
-import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { fetchUnreadCount } from "../services/chatApi";
@@ -18,7 +17,6 @@ interface SidebarProps {
 export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen, setIsOpen, onUnreadChange }: SidebarProps) {
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
-  // Fetch unread count from backend
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -31,37 +29,25 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
         if (cancelled) return;
         setUnreadMessages(count);
         onUnreadChange?.(count);
-      }).catch(() => {});
-    } catch {}
+      }).catch(() => { });
+    } catch { }
     return () => { cancelled = true; };
   }, [isOpen]);
 
-  const getColor = () => {
-    switch (userType) {
-      case 'passenger': return 'bg-blue-600';
-      case 'driver': return 'bg-green-600';
-      case 'advertiser': return 'bg-purple-400';
-      case 'admin': return 'bg-red-600';
-    }
+  const accentByType = {
+    passenger: { color: '#3b82f6', bg: 'bg-blue-600', glow: 'rgba(59,130,246,0.4)', activeText: 'text-blue-400', activeBg: 'bg-blue-600/15' },
+    driver: { color: '#10b981', bg: 'bg-emerald-600', glow: 'rgba(16,185,129,0.4)', activeText: 'text-emerald-400', activeBg: 'bg-emerald-600/15' },
+    advertiser: { color: '#a78bfa', bg: 'bg-purple-500', glow: 'rgba(167,139,250,0.4)', activeText: 'text-purple-400', activeBg: 'bg-purple-500/15' },
+    admin: { color: '#ef4444', bg: 'bg-red-600', glow: 'rgba(239,68,68,0.4)', activeText: 'text-red-400', activeBg: 'bg-red-600/15' },
   };
+  const accent = accentByType[userType];
 
-  const getColorHover = () => {
-    switch (userType) {
-      case 'passenger': return 'hover:bg-blue-50/10';
-      case 'driver': return 'hover:bg-green-50/10';
-      case 'advertiser': return 'hover:bg-purple-50/10';
-      case 'admin': return 'hover:bg-red-50/10';
-    }
-  };
-
-  const getColorActive = () => {
-    switch (userType) {
-      case 'passenger': return 'bg-blue-600/20 text-blue-400';
-      case 'driver': return 'bg-green-600/20 text-green-400';
-      case 'advertiser': return 'bg-purple-400/20 text-purple-400';
-      case 'admin': return 'bg-red-600/20 text-red-400';
-    }
-  };
+  const roleLabel = {
+    passenger: 'Passageiro',
+    driver: 'Motorista',
+    advertiser: 'Anunciante',
+    admin: 'Administrador',
+  }[userType];
 
   const adminMenuItems = [
     { id: 'dashboard', label: 'Painel Admin', icon: Shield },
@@ -71,7 +57,6 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
 
   const getSearchLabel = () => {
     if (userType === 'passenger') return 'Buscar Motoristas';
-    if (userType === 'driver') return 'Solicitações';
     if (userType === 'advertiser') return 'Campanhas';
     return 'Rotas';
   };
@@ -83,30 +68,48 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
     { id: 'chat', label: 'Mensagens', icon: MessageCircle },
   ];
 
-  const calculatorItem = { id: 'calculator', label: 'Calculadora de Corrida', icon: Calculator };
-  const profileItem = { id: 'profile', label: 'Perfil', icon: User };
-
-  const regularMenuItems = userType === 'driver' 
-    ? [...baseMenuItems, calculatorItem, profileItem]
-    : [...baseMenuItems, profileItem];
+  const regularMenuItems = userType === 'driver'
+    ? [...baseMenuItems, { id: 'calculator', label: 'Calculadora de Corrida', icon: Calculator }, { id: 'profile', label: 'Perfil', icon: User }]
+    : [...baseMenuItems, { id: 'profile', label: 'Perfil', icon: User }];
 
   const menuItems = userType === 'admin' ? adminMenuItems : regularMenuItems;
 
   const SidebarContent = () => (
-    <>
-      <div className="p-6 border-b border-border">
+    <div className="flex flex-col h-full sidebar-bg animate-slide-in-left">
+      {/* Brand header */}
+      <div className="p-6 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <Logo className={`w-12 h-12`} bgClass={getColor()} />
+          <div className="relative">
+            <div
+              className="absolute inset-0 rounded-full blur-md opacity-60"
+              style={{ background: accent.glow }}
+            />
+            <Logo className={`w-11 h-11 relative z-10`} bgClass={accent.bg} />
+          </div>
           <div>
-            <h3 className="text-foreground">Meu Carro de Linha</h3>
-            <p className="text-muted-foreground text-sm">
-              {userType === 'passenger' ? 'Passageiro' : userType === 'driver' ? 'Motorista' : userType === 'advertiser' ? 'Anunciante' : 'Administrador'}
-            </p>
+            <h3
+              className="gradient-text-static font-semibold text-sm leading-tight"
+              style={{ fontFamily: "'Sora', sans-serif" }}
+            >
+              Meu Carro de Linha
+            </h3>
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full mt-1 inline-block"
+              style={{
+                background: `${accent.color}22`,
+                color: accent.color,
+                border: `1px solid ${accent.color}33`,
+              }}
+            >
+              {roleLabel}
+            </span>
           </div>
         </div>
       </div>
-      <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {menuItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
           return (
@@ -120,46 +123,52 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
                   onUnreadChange?.(0);
                 }
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive ? getColorActive() : `text-foreground ${getColorHover()}`
-              }`}
+              className={`nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left animate-fade-in-up delay-${Math.min(index * 75, 400)} ${isActive
+                  ? `${accent.activeBg} ${accent.activeText} font-medium`
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                } ${isActive ? 'active' : ''}`}
+              style={isActive ? { boxShadow: `inset 0 0 12px ${accent.glow}` } : {}}
             >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm">{item.label}</span>
               {item.id === 'chat' && unreadMessages > 0 && (
-                <span className="ml-auto bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadMessages}
+                <span
+                  className="ml-auto text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center animate-badge-pop"
+                  style={{ background: `linear-gradient(135deg, #3b82f6, #7c3aed)`, boxShadow: '0 2px 8px rgba(59,130,246,0.5)' }}
+                >
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
                 </span>
               )}
             </button>
           );
         })}
       </nav>
-      <div className="p-4 border-t border-border">
-        <Button
+
+      {/* Logout */}
+      <div className="p-4 border-t border-white/5">
+        <button
           onClick={() => {
             onLogout();
             setIsOpen(false);
           }}
-          variant="ghost"
-          className="w-full justify-start text-foreground hover:bg-red-600/20 hover:text-red-400"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-600/10 transition-all duration-200 text-sm"
         >
-          <LogOut className="w-5 h-5 mr-3" />
+          <LogOut className="w-4 h-4 flex-shrink-0" />
           Sair
-        </Button>
+        </button>
       </div>
-    </>
+    </div>
   );
 
   return (
     <>
-      {/* Sidebar overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setIsOpen(false)}>
-          <div
-            className="w-72 h-full bg-card flex flex-col shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          className="fixed inset-0 z-40 animate-fade-in"
+          style={{ background: 'rgba(2,4,10,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setIsOpen(false)}
+        >
+          <div className="w-72 h-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <SidebarContent />
           </div>
         </div>
@@ -169,7 +178,6 @@ export function Sidebar({ userType, currentScreen, onNavigate, onLogout, isOpen,
 }
 
 export function getUnreadMessages() {
-  // Legacy helper (kept for compatibility). Prefer lifting state in App.
   const val = Number(localStorage.getItem('unreadCount') || '0');
   return Number.isFinite(val) ? val : 0;
 }

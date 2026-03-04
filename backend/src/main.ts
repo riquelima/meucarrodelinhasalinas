@@ -5,46 +5,67 @@ import * as dotenv from 'dotenv';
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/roles.guard';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
+
+dotenv.config();
+
+const server = express();
+let cachedApp: any;
 
 async function bootstrap() {
-  dotenv.config();
-  const app = await NestFactory.create(AppModule);
+  if (!cachedApp) {
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
-  app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'https://meucarrodelinhasalinas.com.br',
-      process.env.CLIENT_URL || 'http://localhost:5173',
-    ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
+    app.enableCors({
+      origin: [
+        'http://localhost:5173',
+        'https://meucarrodelinhasalinas.com.br',
+        process.env.CLIENT_URL || 'http://localhost:5173',
+      ],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      credentials: true,
+    });
 
+    const reflector = app.get(Reflector);
+    app.useGlobalGuards(new JwtAuthGuard(reflector));
 
-  const reflector = app.get(Reflector);
-  app.useGlobalGuards(new JwtAuthGuard(reflector));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    const config = new DocumentBuilder()
+      .setTitle('Meu Carro de Linha API')
+      .setDescription('API para gerenciar passageiros, motoristas, anúncios, rotas e chat')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const config = new DocumentBuilder()
-    .setTitle('Meu Carro de Linha API')
-    .setDescription('API para gerenciar passageiros, motoristas, anúncios, rotas e chat')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-
-  const port = process.env.PORT ?? 8080;
-  await app.listen(port, '0.0.0.0');
-
-  //   console.log(`Aplicação rodando em http://localhost:${process.env.PORT || 3000}`);
+    await app.init();
+    cachedApp = app;
+  }
+  return cachedApp;
 }
-bootstrap();
+
+// Inicia localmente se não estiver no Vercel
+if (!process.env.VERCEL) {
+  bootstrap().then(app => {
+    const port = process.env.PORT ?? 8080;
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`Aplicativo rodando localmente na porta ${port}`);
+    });
+  });
+}
+
+// Exporta o handler para a Vercel Serverless Function
+export default async function handler(req: any, res: any) {
+  await bootstrap();
+  server(req, res);
+}

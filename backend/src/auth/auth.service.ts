@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { EmailService } from 'src/email/email.service';
 
 
@@ -27,7 +27,7 @@ export class AuthService {
     async login(user: any) {
         const cutoffDate = new Date('2025-11-01T00:00:00.000Z');
         let userCreatedAt: Date;
-        
+
         try {
             const createdAtValue: any = (user as any).createdAt;
             if (createdAtValue) {
@@ -44,7 +44,7 @@ export class AuthService {
                 } else {
                     userCreatedAt = new Date(createdAtValue);
                 }
-                
+
                 if (isNaN(userCreatedAt.getTime())) {
                     userCreatedAt = new Date();
                 }
@@ -54,7 +54,7 @@ export class AuthService {
         } catch (error) {
             userCreatedAt = new Date();
         }
-        
+
         const isLegacyUser = userCreatedAt.getTime() < cutoffDate.getTime();
         const payload = { sub: user._id, email: user.email, role: user.role };
         return { access_token: this.jwtService.sign(payload), isLegacyUser };

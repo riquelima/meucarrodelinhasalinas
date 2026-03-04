@@ -1,7 +1,7 @@
 import { Injectable, Inject, Scope, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { REQUEST } from '@nestjs/core';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 import { MotoristaDocument } from './schemas/motorista.schema';
@@ -241,17 +241,17 @@ export class UsersService {
     async deleteById(id: string, currentUserId?: string) {
         // Impede que o usuário delete a própria conta
         if (currentUserId && id === currentUserId) {
-          throw new ForbiddenException('Você não pode excluir sua própria conta');
+            throw new ForbiddenException('Você não pode excluir sua própria conta');
         }
-        
+
         const deleted = await this.userModel.findByIdAndDelete(id).exec();
-        
+
         if (!deleted) {
-          throw new NotFoundException('Usuario não encontrado');
+            throw new NotFoundException('Usuario não encontrado');
         }
-    
+
         return { message: 'Usuario deletado com sucesso' };
-      }
+    }
 
     async getMonthlyGrowth() {
         const now = new Date();
@@ -294,7 +294,7 @@ export class UsersService {
             const monthName = date.toLocaleString('pt-BR', { month: 'short' });
 
             const monthCount = await this.userModel.countDocuments({
-                createdAt: { 
+                createdAt: {
                     $gte: startDate,
                     $lte: monthEnd
                 }
