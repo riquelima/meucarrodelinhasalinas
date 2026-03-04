@@ -10,6 +10,8 @@ import express from 'express';
 
 dotenv.config();
 
+import { APP_CONFIG } from './config';
+
 const server = express();
 let cachedApp: any;
 
@@ -21,7 +23,7 @@ async function bootstrap() {
       origin: [
         'http://localhost:5173',
         'https://meucarrodelinhasalinas.com.br',
-        process.env.CLIENT_URL || 'http://localhost:5173',
+        APP_CONFIG.CLIENT_URL || 'http://localhost:5173',
       ],
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
@@ -57,7 +59,7 @@ async function bootstrap() {
 // Inicia localmente se não estiver no Vercel
 if (!process.env.VERCEL) {
   bootstrap().then(app => {
-    const port = process.env.PORT ?? 8080;
+    const port = APP_CONFIG.PORT ?? 8080;
     app.listen(port, '0.0.0.0', () => {
       console.log(`Aplicativo rodando localmente na porta ${port}`);
     });

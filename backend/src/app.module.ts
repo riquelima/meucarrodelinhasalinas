@@ -12,20 +12,22 @@ import { BlogModule } from './blog/blog.module';
 import { EmailModule } from './email/email.module';
 
 
+import { APP_CONFIG } from './config';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, 
+      isGlobal: true,
     }),
-    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost/meu_carro_db'),
+    MongooseModule.forRoot(APP_CONFIG.MONGO_URI),
     AuthModule,
     UsersModule,
     //RoutesModule,
     ReviewsModule,
     MessageModule,
-    AdsModule, 
-    BlogModule, 
+    AdsModule,
+    BlogModule,
     EmailModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
