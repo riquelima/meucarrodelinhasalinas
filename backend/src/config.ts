@@ -10,7 +10,7 @@ export const APP_CONFIG = {
     JWT_EXPIRES_IN: "3600s",
     JWT_SECRET: "17572735852a87f33bbe14bc735ea1c4af335f3b18540b77c141ac3db6d36bcb89c982c3591a49382f5206db8ba4281dc1ee9091e6b1b00a6598cf9bdd902d42",
     MONGO_URI: "mongodb+srv://meucarrodelinhaadm_db_user:FxvE8aAtlQ8RFwEf@meucarrolinhabd.mlwfplv.mongodb.net/?appName=MEUCARROLINHABD",
-    NODE_ENV: "production",
+    NODE_ENV: "development",
     PORT: 3000,
     RESEND_API_KEY: "re_hnfxzaSP_BvFCP5cuGfYgscc2ApPXAtvx",
 };

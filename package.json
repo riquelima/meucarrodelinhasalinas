@@ -5,7 +5,7 @@
     "scripts": {
         "postinstall": "npm run install:all",
         "install:all": "cd frontend && npm install && cd ../backend && npm install",
-        "build": "npm run build:frontend && npm run build:backend",
+        "build": "cd frontend && npm run build && cd .. && rm -rf public && mv frontend/build public",
         "build:frontend": "cd frontend && npm run build",
         "build:backend": "cd backend && npm run build"
     }
