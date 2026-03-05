@@ -70,6 +70,14 @@ if (!process.env.VERCEL) {
 
 // Exporta o handler para a Vercel Serverless Function
 export default async function handler(req: any, res: any) {
-  await bootstrap();
-  server(req, res);
+  try {
+    await bootstrap();
+    server(req, res);
+  } catch (error) {
+    console.error('CRITICAL VERCEL ERROR BOOTSTRAPPING NEST: ', error);
+    res.status(500).json({
+      message: 'Internal Server Error no NestJS',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
