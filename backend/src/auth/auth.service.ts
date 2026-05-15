@@ -29,7 +29,7 @@ export class AuthService {
         let userCreatedAt: Date;
 
         try {
-            const createdAtValue: any = (user as any).createdAt;
+            const createdAtValue: any = (user as any).createdAt || (user as any).createAt;
             if (createdAtValue) {
                 if (createdAtValue instanceof Date) {
                     userCreatedAt = createdAtValue;
@@ -57,7 +57,11 @@ export class AuthService {
 
         const isLegacyUser = userCreatedAt.getTime() < cutoffDate.getTime();
         const payload = { sub: user._id, email: user.email, role: user.role };
-        return { access_token: this.jwtService.sign(payload), isLegacyUser };
+        return { 
+            access_token: this.jwtService.sign(payload), 
+            isLegacyUser,
+            user 
+        };
     }
 
 

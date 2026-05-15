@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { REQUEST } from '@nestjs/core';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
+import { supabase } from '../config/supabase';
 import { MotoristaDocument } from './schemas/motorista.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
@@ -139,7 +140,8 @@ export class UsersService {
     }
 
     async findAllMotoristas() {
-        return this.motoristaModel.aggregate([
+        // Busca motoristas no MongoDB
+        const mongoMotoristas = await this.motoristaModel.aggregate([
             {
                 $addFields: {
                     statusPriority: {
@@ -154,6 +156,36 @@ export class UsersService {
                 $project: { statusPriority: 0 }
             }
         ]).exec();
+
+        // Busca motoristas no Supabase (users_migrados)
+        const { data: supabaseMotoristas, error } = await supabase
+            .from('users_migrados')
+            .select('*')
+            .eq('role', UserRole.MOTORISTA);
+
+        if (error) {
+            console.error('Erro ao buscar motoristas no Supabase:', error);
+            return mongoMotoristas;
+        }
+
+        // Formata os motoristas do Supabase para o formato esperado pelo frontend
+        const formattedSupabase = (supabaseMotoristas || []).map(m => ({
+            ...m,
+            _id: m._id.toString(), // Garante que o ID seja string
+            statusPriority: m.status === 'online' ? 1 : 0
+        }));
+
+        // Mescla as listas
+        const combined = [...mongoMotoristas, ...formattedSupabase];
+
+        // Ordena a lista combinada
+        return combined.sort((a, b) => {
+            const pA = a.status === 'online' ? 1 : 0;
+            const pB = b.status === 'online' ? 1 : 0;
+            if (pA !== pB) return pB - pA;
+            if ((b.avgRating || 0) !== (a.avgRating || 0)) return (b.avgRating || 0) - (a.avgRating || 0);
+            return (b.profileViews || 0) - (a.profileViews || 0);
+        });
     }
 
 
@@ -162,6 +194,18 @@ export class UsersService {
     // }
 
     async mudarStatusMotorista(id: string, status: string) {
+        // Tenta atualizar no Supabase primeiro
+        const { data, error } = await supabase
+            .from('users_migrados')
+            .update({ status })
+            .eq('_id', id)
+            .select()
+            .single();
+
+        if (!error && data) {
+            return data;
+        }
+
         const motorista = await this.motoristaModel.findById(id);
         if (!motorista) throw new NotFoundException('Motorista não encontrado');
 
@@ -171,18 +215,53 @@ export class UsersService {
 
 
     async findByEmail(email: string) {
-        const user = await this.userModel.findOne({ email }).lean();
-        return user;
+        // Busca na tabela users_migrados do Supabase
+        const { data, error } = await supabase
+            .from('users_migrados')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (error || !data) {
+            // Fallback para o MongoDB (opcional, dependendo da estratégia de migração)
+            const user = await this.userModel.findOne({ email }).lean();
+            return user;
+        }
+
+        return data;
     }
 
     /** Encontrar usuario por ID com dados basicos */
     async findById(id: string) {
+        // Primeiro tenta no Supabase
+        const { data, error } = await supabase
+            .from('users_migrados')
+            .select('*')
+            .eq('_id', id)
+            .single();
+
+        if (!error && data) {
+            return data;
+        }
+
+        // Fallback para o MongoDB
         const user = await this.userModel.findById(id).lean();
         return user;
     }
 
     /** Encontrar usuario por ID, dados completo */
     async findByIdComplete(id: string) {
+        // Tenta no Supabase primeiro
+        const { data: supabaseUser, error } = await supabase
+            .from('users_migrados')
+            .select('*')
+            .eq('_id', id)
+            .single();
+
+        if (!error && supabaseUser) {
+            return supabaseUser;
+        }
+
         const model = await this.getModelByRoleFromUser(id);
         const userReturn = await model.findById(id).lean();
 
@@ -202,21 +281,23 @@ export class UsersService {
 
     /** Top motoristas por visualizações */
     async getTopMotoristasByProfileViews(limit = 5) {
-        const pipeline: any[] = [
-            {
-                $addFields: {
-                    statusPriority: { $cond: [{ $eq: ['$status', 'online'] }, 1, 0] }
-                }
-            },
-            { $sort: { statusPriority: -1, avgRating: -1, profileViews: -1 } },
-            { $project: { statusPriority: 0 } }
-        ];
-
-        return this.motoristaModel.aggregate(pipeline).limit(limit).exec();
+        const allMotoristas = await this.findAllMotoristas();
+        return allMotoristas.slice(0, limit);
     }
 
     /** Pega o role do usuário pelo ID */
     private async getUserRoleFromId(userId: string): Promise<UserRole> {
+        // Tenta no Supabase primeiro
+        const { data: supabaseUser, error } = await supabase
+            .from('users_migrados')
+            .select('role')
+            .eq('_id', userId)
+            .single();
+
+        if (!error && supabaseUser) {
+            return supabaseUser.role as UserRole;
+        }
+
         const user = await this.userModel.findById(userId).lean();
         if (!user) throw new NotFoundException('Usuário não encontrado');
         return user.role;

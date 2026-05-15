@@ -5,6 +5,7 @@ import { get } from 'mongoose';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { Public } from '../common/decorators/roles.decorator';
 
 
 
@@ -15,6 +16,7 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 export class UsersController {
     constructor(private usersService: UsersService) { }
 
+    @Public()
     @Get('motoristas')
     @ApiOperation({ summary: 'Retorna todos os motoristas' })
     async getAllMotoristas() {
@@ -33,6 +35,7 @@ export class UsersController {
         return this.usersService.getUserCount();
     }
 
+    @Public()
     @Get('motoristas/profile-views/top')
     @ApiOperation({ summary: 'Retorna os motoristas com mais visualizações de perfil' })
     async getTopMotoristasByProfileViews() {

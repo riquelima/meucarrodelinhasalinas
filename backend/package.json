@@ -32,7 +32,8 @@
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.7.10",
